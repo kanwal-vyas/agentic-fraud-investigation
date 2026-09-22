@@ -1,0 +1,48 @@
+// TigerGraph GSQL Loading Jobs Definition for FraudGraph
+// Use with preprocessed CSV data files
+
+USE GRAPH FraudGraph
+
+CREATE LOADING JOB load_fraud_graph FOR GRAPH FraudGraph {
+    DEFINE FILENAME file_customers;
+    DEFINE FILENAME file_cards;
+    DEFINE FILENAME file_device_profiles;
+    DEFINE FILENAME file_email_domains;
+    DEFINE FILENAME file_billing_regions;
+    DEFINE FILENAME file_transactions;
+    DEFINE FILENAME file_closed_cases;
+
+    // 1. Load Customers
+    LOAD file_customers TO VERTEX Customer VALUES ($0)
+        USING HEADER="true", SEPARATOR=",";
+
+    // 2. Load Cards and OWNS_CARD edges
+    LOAD file_cards TO VERTEX Card VALUES ($0, $1, $2, $3, $4),
+                    TO EDGE OWNS_CARD VALUES ($1, $0)
+        USING HEADER="true", SEPARATOR=",";
+
+    // 3. Load DeviceProfiles
+    LOAD file_device_profiles TO VERTEX DeviceProfile VALUES ($0, $1, $2, $3, $4, $5)
+        USING HEADER="true", SEPARATOR=",";
+
+    // 4. Load EmailDomains
+    LOAD file_email_domains TO VERTEX EmailDomain VALUES ($0)
+        USING HEADER="true", SEPARATOR=",";
+
+    // 5. Load BillingRegions
+    LOAD file_billing_regions TO VERTEX BillingRegion VALUES ($0, $1)
+        USING HEADER="true", SEPARATOR=",";
+
+    // 6. Load Transactions and Edges
+    LOAD file_transactions TO VERTEX Transaction VALUES ($0, $1, $2, $2, $3, $4, $5, $6, $7),
+                           TO EDGE PERFORMED_TXN VALUES ($8, $0),
+                           TO EDGE USED_DEVICE VALUES ($0, $10) WHERE $10 != "",
+                           TO EDGE PURCHASER_EMAIL VALUES ($0, $11) WHERE $11 != "",
+                           TO EDGE BILLED_IN VALUES ($0, $6) WHERE $6 != ""
+        USING HEADER="true", SEPARATOR=",";
+
+    // 7. Load Closed Historical Cases and Edges
+    LOAD file_closed_cases TO VERTEX ClosedCase VALUES ($0, $1, $2, $3, $4, $5, $6, $10, $9, $14),
+                           TO EDGE ON_CARD VALUES ($0, $2)
+        USING HEADER="true", SEPARATOR=",";
+}
