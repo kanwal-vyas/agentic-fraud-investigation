@@ -1,5 +1,6 @@
 from typing import List, Dict, Any, Optional
 from src.core.constants import FraudPattern
+from src.core.validation import is_valid_entity_id, clean_entity_id
 from src.models.evidence import (
     TransactionDetail,
     CardHistoryEvidence,
@@ -86,7 +87,7 @@ class FraudPatternDetector:
         # -------------------------------------------------------------
         # 3. Shared Device Syndicate / Undocumented Syndicate Check
         # -------------------------------------------------------------
-        if tx.profile_id and "Unknown" not in tx.profile_id:
+        if tx.profile_id and is_valid_entity_id(tx.profile_id, "DeviceProfile"):
             dev_ev = self.tools.find_shared_devices(tx.profile_id)
             if dev_ev.is_shared and len(dev_ev.connected_cards) >= 2:
                 results.append(PatternDetectionResult(
@@ -105,9 +106,9 @@ class FraudPatternDetector:
         # -------------------------------------------------------------
         # 4. Card Not Present New Device Check
         # -------------------------------------------------------------
-        if tx.channel == "online" and tx.profile_id and "Unknown" not in tx.profile_id:
+        if tx.channel == "online" and tx.profile_id and is_valid_entity_id(tx.profile_id, "DeviceProfile"):
             # Check if device is new for this card
-            prior_dev_txns = [t for t in card_hist.transactions if t.txn_id != tx.txn_id and t.profile_id == tx.profile_id]
+            prior_dev_txns = [t for t in card_hist.transactions if t.txn_id != tx.txn_id and clean_entity_id(t.profile_id) == tx.profile_id]
             if not prior_dev_txns:
                 results.append(PatternDetectionResult(
                     pattern=FraudPattern.CARD_NOT_PRESENT_NEW_DEVICE,
@@ -121,6 +122,7 @@ class FraudPatternDetector:
                     supporting_entity_ids=[card_id, tx.profile_id],
                     rationale="Card-not-present authorization initiated from a new device profile with no prior card history.",
                 ))
+
 
         # -------------------------------------------------------------
         # 5. Standard Card Not Present Fraud Check

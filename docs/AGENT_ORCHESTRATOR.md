@@ -95,13 +95,57 @@ When evidence is `INSUFFICIENT` or `CONFLICTING`:
 ---
 
 ## 7. Orchestration Quality Metrics
+---
 
-Evaluation across 12 benchmark cases (`scripts/run_agent_benchmark.py`):
-- **Total Cases Evaluated**: 12
-- **Average Tool Calls / Case**: 4.17
-- **Duplicate Tool Call Rate**: 0.0%
-- **Cases Stopping Within Limit**: 100.0%
-- **Evidence Request Rate**: 91.7%
-- **Reassessment Rate**: 8.3%
-- **Policy Conflict Rate**: 0.0%
-- **Unsupported Action Rate**: 0.0%
+## 7. Data Quality Guardrails & Entity Validation (`src/core/validation.py`)
+
+To guarantee that incomplete or missing dataset attributes never contaminate the graph or generate false-positive fraud syndicates:
+1. **Centralized Entity Validator**: All entity IDs (devices, customers, cards, email domains, regions) pass through `clean_entity_id()` and `is_valid_entity_id()`.
+2. **Missing/Sentinel Value Rejection**:
+   - `None`, `NaN`, `nan`, `null`, `None`, `""`, `unknown`, `"UnknownDevice | UnknownOS | UnknownBrowser | UnknownResolution"` are rejected at every boundary.
+3. **Graph Ingestion & MCP Safe Responses**:
+   - TigerGraph data loaders and in-memory indices skip invalid device entities entirely.
+   - `handle_find_shared_devices` validates input IDs and immediately returns `status="invalid_entity"` with 0 connected cards/customers when passed invalid or missing values.
+4. **Missing-Entity Contamination Rate**: Strictly **`0`** across all test and benchmark suites.
+
+---
+
+## 8. Evidence Request Justification Audit
+
+Evidence requests are strictly issued only when mandated by policy (e.g. Rules R1, R5, R6, R8) or justified by true uncertainty gaps:
+
+| Case | Requested? | Reason / Classification | Policy Req? | Information Gap Addressed |
+| :--- | :--- | :--- | :--- | :--- |
+| **HHG-001** | YES | justified (policy-mandated verification) | YES | Cardholder authorization confirmation (Rule R1) |
+| **HHG-002** | YES | justified (policy-mandated verification) | YES | Cardholder authorization confirmation (Rule R1) |
+| **HHG-003** | NO | sufficient evidence / customer report authoritative | NO | None (Rule R2 direct customer denial) |
+| **HHG-004** | NO | sufficient evidence / benign baseline | NO | None (Rule R4/R7 low-risk baseline match) |
+| **HHG-005** | YES | justified (policy-mandated verification) | YES | Secondary card check across linked accounts (Rule R6) |
+| **HHG-006** | YES | justified (policy-mandated verification) | YES | Secondary card check across linked accounts (Rule R6) |
+| **HHG-007** | YES | justified (policy-mandated verification) | YES | Cardholder authorization confirmation (Rule R1) |
+| **HHG-010** | YES | justified (policy-mandated verification) | YES | Cardholder authorization confirmation (Rule R1) |
+| **HHG-014** | YES | justified (policy-mandated verification) | YES | Cardholder authorization confirmation (Rule R1) |
+| **HHG-015** | YES | justified (policy-mandated verification) | YES | Cardholder authorization confirmation (Rule R1) |
+| **HHG-017** | YES | justified (policy-mandated verification) | YES | Cardholder authorization confirmation (Rule R1) |
+| **HHG-018** | NO | sufficient evidence / customer report authoritative | NO | None (Rule R2 direct customer denial) |
+
+---
+
+## 9. Orchestration Quality & Audit Benchmark Metrics
+
+Evaluation across 12 comprehensive benchmark cases (`scripts/run_agent_benchmark.py`):
+
+| Metric | Measured Result | Benchmark Target / Constraint |
+| :--- | :--- | :--- |
+| **Total Cases Evaluated** | **12** | 12 representative cases |
+| **Average Tool Calls / Case** | **4.17** | Dynamic (1–6 steps) |
+| **Duplicate Tool Call Rate** | **0.0%** | 0.0% |
+| **Max Allowed Steps Limit** | **8** | 8 steps max |
+| **Cases Stopping Within Limit** | **100.0%** | 100.0% |
+| **Evidence Request Rate** | **75.0%** | Context-dependent |
+| **Justified Evidence Request Rate** | **100.0%** | 100.0% |
+| **Reassessment Loop Rate** | **8.3%** | Controlled test trigger |
+| **Policy Conflict Rate** | **0.0%** | 0.0% |
+| **Unsupported Action Rate** | **0.0%** | **0.0% (Strict target)** |
+| **Missing-Entity Contamination Cases** | **0** | **0 (Strict target)** |
+

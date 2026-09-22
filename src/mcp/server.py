@@ -3,6 +3,7 @@ from typing import Dict, Any, List, Optional
 from src.mcp.schemas import MCP_INVESTIGATION_TOOLS, MCPToolDefinition
 from src.tigergraph.tools import TigerGraphInvestigationTools
 from src.tigergraph.client import TigerGraphClient
+from src.core.validation import is_valid_entity_id, clean_entity_id
 
 class TigerGraphMCPServer:
     """
@@ -280,6 +281,23 @@ class TigerGraphMCPServer:
                 "evidence": [],
                 "metrics": {},
                 "limitations": []
+            }
+
+        if not is_valid_entity_id(profile_id, "DeviceProfile"):
+            return {
+                "tool": "find_shared_devices",
+                "status": "invalid_entity",
+                "backend": backend,
+                "error": f"Device profile identifier '{profile_id}' is missing or invalid.",
+                "subject": {"profile_id": profile_id, "is_shared": False},
+                "evidence": [f"Device profile identifier is missing or invalid ('{profile_id}'); device is unavailable in graph."],
+                "metrics": {
+                    "connected_cards_count": 0,
+                    "connected_customers_count": 0,
+                    "total_txns_on_device": 0,
+                    "connected_cards": []
+                },
+                "limitations": ["Device unavailable for transaction."]
             }
 
         dev_ev = self.tools.find_shared_devices(profile_id)

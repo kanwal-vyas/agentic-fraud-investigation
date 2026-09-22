@@ -273,6 +273,7 @@ class InvestigationContextSynthesizer:
             flagged_txn_id=flagged_txn_id,
             card_id=card_id,
             customer_id=customer_id,
+            profile_id=profile_id,
             model_risk_score=risk_score,
             graph_evidence_summary=adapted["graph_evidence_bullets"],
             detected_patterns=[p.model_dump() for p in detected_patterns],

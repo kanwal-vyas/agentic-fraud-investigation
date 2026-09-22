@@ -8,6 +8,7 @@ from src.models.agent import (
     AgentActionType,
     TriggerType
 )
+from src.core.validation import is_valid_entity_id
 
 class LLMProvider(ABC):
     """Abstract interface for LLM / Reasoning planner providers."""
@@ -24,9 +25,9 @@ class LLMProvider(ABC):
 
 class MockLLMProvider(LLMProvider):
     """
-    Deterministic, gap-driven investigation planner for testing and reference execution.
-    Dynamically decides the next tool based on trigger modality, collected evidence,
-    and missing dimensions without hardcoding a rigid universal sequence.
+    Deterministic, evidence-driven heuristic investigation planner for testing and reference execution.
+    Dynamically selects tools based on discovered graph evidence, trigger modality, and data availability.
+    Explicitly evaluates information gaps rather than following a static universal script.
     """
     def plan_next_action(
         self,
@@ -48,28 +49,57 @@ class MockLLMProvider(LLMProvider):
                 reason=f"Need fundamental transaction features and device attributes for flagged transaction {txn_id}."
             )
 
-        # Inspect collected transaction attributes
+        # Inspect collected evidence to drive subsequent decisions
         tx_data = None
-        for ev in state.collected_evidence:
-            if ev.get("tool") == "get_transaction" and ev.get("status") == "success":
-                tx_data = ev.get("subject", {})
-                break
-        
-        has_device = bool(tx_data and tx_data.get("profile_id"))
-        profile_id = tx_data.get("profile_id", "") if tx_data else ""
-        channel = tx_data.get("channel", "online") if tx_data else "online"
+        shared_device_result = None
+        velocity_result = None
+        card_history_result = None
 
-        # 2. Trigger-specific dynamic investigation path
+        for ev in state.collected_evidence:
+            tool_name = ev.get("tool")
+            if tool_name == "get_transaction" and ev.get("status") == "success":
+                tx_data = ev.get("subject", {})
+            elif tool_name == "find_shared_devices" and ev.get("status") == "success":
+                shared_device_result = ev
+            elif tool_name == "detect_velocity" and ev.get("status") == "success":
+                velocity_result = ev
+            elif tool_name == "get_card_history" and ev.get("status") == "success":
+                card_history_result = ev
+        
+        raw_profile_id = tx_data.get("profile_id", "") if tx_data else ""
+        has_valid_device = is_valid_entity_id(raw_profile_id, "DeviceProfile")
+        profile_id = raw_profile_id if has_valid_device else ""
+        channel = tx_data.get("channel", "online") if tx_data else "online"
+        amount = float(tx_data.get("amount", 0.0)) if tx_data else 0.0
+
+        # Check if shared device was found and indicates multi-card syndicate
+        has_syndicate = False
+        if shared_device_result:
+            findings = shared_device_result.get("evidence", [])
+            has_syndicate = any("shared across" in f and "distinct cards" in f for f in findings)
+
+        # 2. Dynamic Evidence-Driven Branching
+
+        # Case A: Shared device syndicate detected -> dynamically investigate connected cards
+        if has_syndicate and "find_connected_cards" not in tools_called:
+            return AgentToolCallDecision(
+                action=AgentActionType.CALL_TOOL,
+                tool="find_connected_cards",
+                arguments={"card_id": card_id},
+                reason=f"Device {profile_id} is shared across multiple accounts; expanding graph traversal to map entire connected card ring."
+            )
+
+        # Trigger-specific investigation
         if trigger.trigger_type == TriggerType.CUSTOMER_REPORT:
-            # Customer reports require immediate baseline cadence & card history check
+            # Customer report: investigate card transaction history and historical precedent
             if "get_card_history" not in tools_called:
                 return AgentToolCallDecision(
                     action=AgentActionType.CALL_TOOL,
                     tool="get_card_history",
                     arguments={"card_id": card_id, "limit": 30},
-                    reason=f"Customer report requires checking card history on {card_id} for unauthorized charge sequence."
+                    reason=f"Customer reported unauthorized charge; inspecting recent transaction cadence and velocity on card {card_id}."
                 )
-            if has_device and "find_shared_devices" not in tools_called:
+            if has_valid_device and "find_shared_devices" not in tools_called:
                 return AgentToolCallDecision(
                     action=AgentActionType.CALL_TOOL,
                     tool="find_shared_devices",
@@ -85,8 +115,8 @@ class MockLLMProvider(LLMProvider):
                 )
 
         elif trigger.trigger_type == TriggerType.ANALYST_REQUEST:
-            # Analyst request focuses on syndicates and connected cards
-            if has_device and "find_shared_devices" not in tools_called:
+            # Analyst request: focus on shared devices, card connections, and history
+            if has_valid_device and "find_shared_devices" not in tools_called:
                 return AgentToolCallDecision(
                     action=AgentActionType.CALL_TOOL,
                     tool="find_shared_devices",
@@ -109,7 +139,7 @@ class MockLLMProvider(LLMProvider):
                 )
 
         else:  # RISK_SCORE
-            # Risk score trigger: check velocity, testing, regional anomalies
+            # Risk score trigger: check velocity first
             if "detect_velocity" not in tools_called:
                 return AgentToolCallDecision(
                     action=AgentActionType.CALL_TOOL,
@@ -117,6 +147,23 @@ class MockLLMProvider(LLMProvider):
                     arguments={"card_id": card_id, "window_hours": 48.0},
                     reason=f"Evaluate transaction burst / velocity spike on card {card_id}."
                 )
+            
+            # Check velocity findings
+            velocity_count = 0
+            if velocity_result:
+                subj = velocity_result.get("subject", {})
+                velocity_count = subj.get("count_window", 0)
+
+            # If velocity is high or small amount, check card testing
+            if velocity_count >= 3 and "detect_card_testing" not in tools_called:
+                return AgentToolCallDecision(
+                    action=AgentActionType.CALL_TOOL,
+                    tool="detect_card_testing",
+                    arguments={"card_id": card_id, "time_window_minutes": 60.0},
+                    reason=f"Rapid velocity ({velocity_count} txns) observed; testing for automated micro-authorization probing sequence."
+                )
+
+            # If card-present / in-person channel, investigate regional anomaly
             if channel != "online" and "detect_regional_anomaly" not in tools_called:
                 return AgentToolCallDecision(
                     action=AgentActionType.CALL_TOOL,
@@ -124,13 +171,25 @@ class MockLLMProvider(LLMProvider):
                     arguments={"txn_id": txn_id},
                     reason=f"Assess geographic out-of-region anomaly for card-present txn {txn_id}."
                 )
-            if has_device and "find_shared_devices" not in tools_called:
+
+            # If valid device profile exists and not yet checked, check shared device
+            if has_valid_device and "find_shared_devices" not in tools_called:
                 return AgentToolCallDecision(
                     action=AgentActionType.CALL_TOOL,
                     tool="find_shared_devices",
                     arguments={"profile_id": profile_id},
                     reason=f"Investigate whether device {profile_id} appears in other compromised accounts."
                 )
+
+            # If low risk (< 0.20), velocity count <= 1, no device anomaly: STOP EARLY
+            if trigger.model_risk_score < 0.20 and velocity_count <= 1 and not has_syndicate:
+                return AgentToolCallDecision(
+                    action=AgentActionType.ASSESS,
+                    tool=None,
+                    arguments={},
+                    reason="Low risk score with normal transaction velocity and no graph anomalies. Evidence state does not justify further tool calls."
+                )
+
             if "get_historical_cases" not in tools_called:
                 return AgentToolCallDecision(
                     action=AgentActionType.CALL_TOOL,
@@ -144,7 +203,7 @@ class MockLLMProvider(LLMProvider):
             action=AgentActionType.ASSESS,
             tool=None,
             arguments={},
-            reason="All primary multi-dimensional graph evidence collected. Proceeding to GraphRAG synthesis and reasoning."
+            reason="All justified graph evidence collected for this case. Proceeding to GraphRAG synthesis and reasoning."
         )
 
 

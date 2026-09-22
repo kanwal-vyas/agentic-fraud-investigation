@@ -3,17 +3,26 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Set, Tuple, Union
 import pandas as pd
 import numpy as np
+from src.core.validation import is_valid_entity_id, clean_entity_id
 
 def build_device_profile_id(device_info: Any, os_val: Any, browser_val: Any, screen_val: Any) -> str:
-    """Creates normalized composite DeviceProfile ID: DeviceInfo | OS | Browser | Screen"""
-    d = str(device_info).strip() if pd.notna(device_info) and str(device_info).strip() != "" else "UnknownDevice"
-    o = str(os_val).strip() if pd.notna(os_val) and str(os_val).strip() != "" else "UnknownOS"
-    b = str(browser_val).strip() if pd.notna(browser_val) and str(browser_val).strip() != "" else "UnknownBrowser"
-    s = str(screen_val).strip() if pd.notna(screen_val) and str(screen_val).strip() != "" else "UnknownScreen"
+    """Creates normalized composite DeviceProfile ID: DeviceInfo | OS | Browser | Screen if valid, else empty string."""
+    clean_d = clean_entity_id(device_info)
+    clean_o = clean_entity_id(os_val)
+    clean_b = clean_entity_id(browser_val)
+    clean_s = clean_entity_id(screen_val)
+
+    if not clean_d and not clean_o and not clean_b and not clean_s:
+        return ""
+
+    d = clean_d or "UnknownDevice"
+    o = clean_o or "UnknownOS"
+    b = clean_b or "UnknownBrowser"
+    s = clean_s or "UnknownScreen"
     return f"{d} | {o} | {b} | {s}"
 
 def extract_device_profiles(identity_df: pd.DataFrame) -> pd.DataFrame:
-    """Extracts unique DeviceProfile vertices from identity records."""
+    """Extracts unique valid DeviceProfile vertices from identity records."""
     profiles = []
     seen = set()
     for _, row in identity_df.iterrows():
@@ -23,17 +32,18 @@ def extract_device_profiles(identity_df: pd.DataFrame) -> pd.DataFrame:
             row.get("id_31"),
             row.get("id_33")
         )
-        if prof_id not in seen:
+        if prof_id and is_valid_entity_id(prof_id, "DeviceProfile") and prof_id not in seen:
             seen.add(prof_id)
             profiles.append({
                 "profile_id": prof_id,
-                "device_info": str(row.get("DeviceInfo", "") or ""),
-                "os": str(row.get("id_30", "") or ""),
-                "browser": str(row.get("id_31", "") or ""),
-                "screen": str(row.get("id_33", "") or ""),
-                "device_type": str(row.get("DeviceType", "") or ""),
+                "device_info": clean_entity_id(row.get("DeviceInfo")) or "",
+                "os": clean_entity_id(row.get("id_30")) or "",
+                "browser": clean_entity_id(row.get("id_31")) or "",
+                "screen": clean_entity_id(row.get("id_33")) or "",
+                "device_type": clean_entity_id(row.get("DeviceType")) or "",
             })
     return pd.DataFrame(profiles)
+
 
 def build_card_lookup(closed_cases_df: pd.DataFrame, case_pack_df: pd.DataFrame) -> Dict[int, str]:
     """
@@ -137,15 +147,16 @@ def preprocess_subdataset(
                 "card6": str(r["card6"]) if pd.notna(r["card6"]) else "unknown",
             }
             
-        prof_id = id_map.get(tid, "")
+        raw_prof = id_map.get(tid, "")
+        prof_id = raw_prof if is_valid_entity_id(raw_prof, "DeviceProfile") else ""
         
-        email_dom = str(r["P_emaildomain"]).strip() if pd.notna(r.get("P_emaildomain")) and str(r["P_emaildomain"]).strip() else ""
-        if email_dom:
+        email_dom = clean_entity_id(r.get("P_emaildomain")) or ""
+        if email_dom and is_valid_entity_id(email_dom, "EmailDomain"):
             email_domains.add(email_dom)
             
-        addr1_val = str(r["addr1"]).strip() if pd.notna(r.get("addr1")) and str(r["addr1"]).strip() else ""
-        addr2_val = str(r["addr2"]).strip() if pd.notna(r.get("addr2")) and str(r["addr2"]).strip() else "87.0"
-        if addr1_val:
+        addr1_val = clean_entity_id(r.get("addr1")) or ""
+        addr2_val = clean_entity_id(r.get("addr2")) or "87.0"
+        if addr1_val and is_valid_entity_id(addr1_val, "BillingRegion"):
             billing_regions.add((addr1_val, addr2_val))
             
         tx_records.append({
@@ -162,6 +173,7 @@ def preprocess_subdataset(
             "profile_id": prof_id,
             "email_domain": email_dom,
         })
+
 
     customers_df = pd.DataFrame([{"customer_id": c} for c in cust_records])
     cards_df = pd.DataFrame(list(card_records.values()))

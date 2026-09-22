@@ -6,6 +6,7 @@ from src.models.reasoning import (
     UncertaintyAssessment,
     UncertaintyLevel
 )
+from src.core.validation import is_valid_entity_id
 
 class ControlledEvidencePlanner:
     """
@@ -21,12 +22,21 @@ class ControlledEvidencePlanner:
         requests: List[EvidenceRequest] = []
 
         # 1. Customer Validation Request (Rule R1 / R7)
-        if ctx.trigger_type != "customer_report":
+        # Only request customer validation if authorization is unknown AND transaction is suspicious/uncertain
+        is_already_authorized_or_denied = ctx.trigger_type in ["customer_report", "customer_confirmed"]
+        is_suspicious_or_uncertain = (
+            sufficiency in [EvidenceSufficiencyState.INSUFFICIENT, EvidenceSufficiencyState.CONFLICTING]
+            or ctx.model_risk_score >= 0.30
+            or bool(ctx.detected_patterns)
+            or uncertainty.level in [UncertaintyLevel.MATERIAL, UncertaintyLevel.HIGH]
+        )
+
+        if not is_already_authorized_or_denied and is_suspicious_or_uncertain:
             requests.append(
                 EvidenceRequest(
                     request_id=f"req_cust_val_{ctx.flagged_txn_id}",
                     request_type="customer_validation",
-                    reason="Customer authorization status is unknown; required before taking irreversible card-blocking action.",
+                    reason="Customer authorization status is unknown for suspicious/anomalous activity; required before taking irreversible card-blocking action.",
                     evidence_gap_addressed="Cardholder authorization confirmation",
                     expected_information_gain=0.95,
                     rationale="Direct customer confirmation or denial deterministically resolves whether transaction is fraud (Rule R2) or authorized (Rule R3).",
@@ -37,13 +47,17 @@ class ControlledEvidencePlanner:
             )
 
         # 2. Secondary Card & Device Syndicate Check (Rule R6)
-        has_shared_device = any("shared across" in b for b in ctx.graph_evidence_summary)
+        # Strictly requires a valid, non-null, non-missing DeviceProfile entity
+        has_shared_device = (
+            any("shared across" in b for b in ctx.graph_evidence_summary)
+            and is_valid_entity_id(ctx.profile_id, "DeviceProfile")
+        )
         if has_shared_device:
             requests.append(
                 EvidenceRequest(
                     request_id=f"req_sec_card_{ctx.card_id}",
                     request_type="secondary_card_check",
-                    reason="Device profile is shared across multiple cardholder accounts in graph.",
+                    reason=f"Device profile '{ctx.profile_id}' is shared across multiple cardholder accounts in graph.",
                     evidence_gap_addressed="Secondary card activity confirmation across linked customer accounts",
                     expected_information_gain=0.85,
                     rationale="Evaluating activity and velocity across connected secondary cards determines the blast radius of syndicate fraud (Rule R6).",

@@ -1,6 +1,7 @@
 from typing import List
 from src.models.context import InvestigationContext
 from src.models.reasoning import UncertaintyAssessment, UncertaintyLevel, ReasoningFactor
+from src.core.validation import is_valid_entity_id
 
 class UncertaintyEvaluator:
     """
@@ -11,8 +12,10 @@ class UncertaintyEvaluator:
         reasons: List[str] = []
         conflicts: List[str] = []
 
-        # 1. Missing Customer Authorization
-        if ctx.trigger_type != "customer_report":
+        # 1. Missing Customer Authorization on Suspicious Activity
+        if ctx.trigger_type not in ["customer_report", "customer_confirmed"] and (
+            ctx.model_risk_score >= 0.30 or any(f.impact == "increases_suspicion" for f in factors)
+        ):
             reasons.append("Customer authorization has not been directly confirmed or denied (Rule R1).")
 
         # 2. Conflicting Evidence Signals
@@ -28,13 +31,12 @@ class UncertaintyEvaluator:
             reasons.append(f"Customer has {len(ctx.historical_cases_cleared)} previously cleared investigation(s) in bank history (potential recurring false positive).")
 
         # 4. Weak / Single Trigger
-        if ctx.trigger_type == "risk_score" and ctx.model_risk_score < 0.70:
+        if ctx.trigger_type == "risk_score" and 0.30 <= ctx.model_risk_score < 0.70:
             reasons.append(f"Model risk score ({ctx.model_risk_score:.2f}) is a weak single signal without definitive corroboration.")
 
         # 5. Device Ambiguity
-        if not any("shared across" in b for b in ctx.graph_evidence_summary):
-            if any("nan" in b or "Unknown" in b for b in ctx.graph_evidence_summary):
-                reasons.append("Device hardware fingerprint is incomplete or unknown, limiting device-level attribution.")
+        if not is_valid_entity_id(ctx.profile_id, "DeviceProfile"):
+            reasons.append("Device hardware fingerprint is unavailable/missing, limiting device-level attribution.")
 
         # Determine Uncertainty Level
         if len(reasons) >= 3 or len(conflicts) >= 2:
@@ -46,8 +48,8 @@ class UncertaintyEvaluator:
         else:
             level = UncertaintyLevel.LOW
 
-        # If customer explicitly filed a report and no strong conflicts exist, uncertainty is reduced
-        if ctx.trigger_type == "customer_report" and not conflicts:
+        # If customer explicitly filed a report or confirmed transaction, and no strong conflicts exist, uncertainty is reduced
+        if ctx.trigger_type in ["customer_report", "customer_confirmed"] and not conflicts:
             level = UncertaintyLevel.LOW
 
         return UncertaintyAssessment(

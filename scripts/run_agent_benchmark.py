@@ -147,7 +147,7 @@ def run_benchmark():
 
         print(f"STOP REASON: [{res.stop_decision.should_stop}] {res.stop_decision.reason}")
 
-    # Aggregate Quality Metrics
+    # Aggregate Quality Metrics & Evidence Request Audit
     n_cases = len(results)
     avg_tools = total_tools_called / n_cases if n_cases else 0.0
     duplicate_rate = (duplicate_calls / n_cases) * 100 if n_cases else 0.0
@@ -156,20 +156,92 @@ def run_benchmark():
     reassess_rate = (reassessment_count / n_cases) * 100 if n_cases else 0.0
     unsupported_rate = (unsupported_actions / n_cases) * 100 if n_cases else 0.0
 
+    # Contamination Audit
+    contaminated_cases = 0
+    audit_table_rows = []
+    justified_requests_count = 0
+
+    for res in results:
+        # Check for invalid entity strings in tool arguments, steps, or evidence summaries
+        has_contamination = False
+        for step in res.investigation_steps:
+            for k, v in step.input_args.items():
+                if str(v).lower() in ["nan", "none", "null", "unknown", "unknowndevice"]:
+                    has_contamination = True
+            if "device nan" in step.reason.lower() or "device nan" in step.result_summary.lower():
+                has_contamination = True
+        for ev in res.final_assessment.supporting_evidence:
+            if "'nan'" in ev.lower() or "device nan" in ev.lower():
+                has_contamination = True
+
+        if has_contamination:
+            contaminated_cases += 1
+
+        # Classify Evidence Request Decision
+        if res.evidence_requests:
+            req = res.evidence_requests[0]
+            req_type = req.request_type
+            pol_ref = req.policy_reference
+            gap = req.evidence_gap_addressed
+            
+            # Classification
+            if req_type == "customer_validation" and res.trigger.trigger_type == TriggerType.CUSTOMER_REPORT:
+                classification = "unnecessary (customer already reported denial)"
+            elif res.trigger.model_risk_score < 0.20 and res.final_assessment.fraud_assessment.value == "likely_benign":
+                classification = "unnecessary (low risk benign baseline)"
+            elif "R1" in pol_ref or "R5" in pol_ref or "R6" in pol_ref or "R8" in pol_ref:
+                classification = "justified (policy-mandated verification)"
+                justified_requests_count += 1
+            else:
+                classification = "justified (unresolved information gap)"
+                justified_requests_count += 1
+
+            audit_table_rows.append({
+                "case_id": res.case_id,
+                "requested": "YES",
+                "reason": classification,
+                "policy_required": "YES" if ("R1" in pol_ref or "R5" in pol_ref or "R6" in pol_ref or "R8" in pol_ref) else "NO",
+                "gap": gap[:45] + "..." if len(gap) > 45 else gap
+            })
+        else:
+            audit_table_rows.append({
+                "case_id": res.case_id,
+                "requested": "NO",
+                "reason": "sufficient evidence / benign baseline / customer report authoritative",
+                "policy_required": "NO",
+                "gap": "None (evidence sufficient for NBA)"
+            })
+
+    justified_rate = (justified_requests_count / evidence_requested_count * 100) if evidence_requested_count > 0 else 100.0
+
+    print("\n" + "=" * 100)
+    print("STAGE 7 EVIDENCE REQUEST AUDIT TABLE")
+    print("=" * 100)
+    print(f"{'CASE':<10} | {'REQUESTED?':<10} | {'REASON / CLASSIFICATION':<42} | {'POLICY REQ?':<11} | {'INFORMATION GAP'}")
+    print("-" * 100)
+    for row in audit_table_rows:
+        print(f"{row['case_id']:<10} | {row['requested']:<10} | {row['reason']:<42} | {row['policy_required']:<11} | {row['gap']}")
+    print("=" * 100)
+
     print("\n" + "=" * 80)
     print("ORCHESTRATION QUALITY METRICS SUMMARY")
     print("=" * 80)
-    print(f"Total Cases Evaluated:       {n_cases}")
-    print(f"Average Tool Calls / Case:   {avg_tools:.2f}")
-    print(f"Duplicate Tool Call Rate:    {duplicate_rate:.1f}%")
-    print(f"Max Allowed Steps:           8")
-    print(f"Cases Stopping Within Limit: {stop_rate:.1f}%")
-    print(f"Evidence Request Rate:       {ev_req_rate:.1f}%")
-    print(f"Reassessment Rate:           {reassess_rate:.1f}%")
-    print(f"Policy Conflict Rate:        {policy_conflicts:.1f}%")
-    print(f"Unsupported Action Rate:     {unsupported_rate:.1f}% (MUST be 0%)")
+    print(f"Total Cases Evaluated:              {n_cases}")
+    print(f"Average Tool Calls / Case:          {avg_tools:.2f}")
+    print(f"Duplicate Tool Call Rate:           {duplicate_rate:.1f}%")
+    print(f"Max Allowed Steps:                  8")
+    print(f"Cases Stopping Within Limit:        {stop_rate:.1f}%")
+    print(f"Evidence Request Rate:              {ev_req_rate:.1f}%")
+    print(f"Justified Evidence Request Rate:    {justified_rate:.1f}%")
+    print(f"Reassessment Rate:                  {reassess_rate:.1f}%")
+    print(f"Policy Conflict Rate:               {policy_conflicts:.1f}%")
+    print(f"Unsupported Action Rate:            {unsupported_rate:.1f}% (Target: 0%)")
+    print(f"Missing-Entity Contamination Cases: {contaminated_cases} (Target: 0)")
     print("=" * 80)
-    print("[SUCCESS] Stage 7 Agentic Investigation Orchestrator benchmark completed!")
+    if contaminated_cases == 0 and unsupported_rate == 0.0:
+        print("[SUCCESS] Stage 7 Agentic Investigation Orchestrator audit criteria passed!")
+    else:
+        print("[WARNING] Audit criteria violation detected.")
 
 if __name__ == "__main__":
     run_benchmark()

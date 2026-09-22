@@ -75,6 +75,7 @@ class InvestigationContext(BaseModel):
     flagged_txn_id: int
     card_id: str
     customer_id: str
+    profile_id: Optional[str] = ""
     model_risk_score: float
     graph_evidence_summary: List[str] = Field(default_factory=list)
     detected_patterns: List[Dict[str, Any]] = Field(default_factory=list)

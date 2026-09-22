@@ -25,7 +25,7 @@ class DeterministicEvidenceEvaluator:
         max_possible_points += 15.0
         if ctx.trigger_type == "customer_report":
             suspicion_points += 15.0
-            confidence_points += 25.0
+            confidence_points += 35.0
             factors.append(
                 ReasoningFactor(
                     dimension="transaction",
@@ -37,7 +37,7 @@ class DeterministicEvidenceEvaluator:
             )
         elif ctx.trigger_type == "customer_confirmed":
             suspicion_points = 0.0
-            confidence_points += 25.0
+            confidence_points += 35.0
             factors.append(
                 ReasoningFactor(
                     dimension="transaction",

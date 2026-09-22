@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from src.core.config import settings
 from src.tigergraph.client import TigerGraphClient
 from src.tigergraph.sample_client import SampleGraphClient
+from src.core.validation import is_valid_entity_id, clean_entity_id
 from src.models.evidence import (
     TransactionDetail,
     CustomerHistoryEvidence,
@@ -23,20 +24,25 @@ from src.models.evidence import (
 
 class TigerGraphInvestigationTools:
     """
-    Unified Python investigation tool layer for the Agent and GraphRAG.
-    Validates inputs and outputs, returning typed Pydantic models.
+    Standardized tool suite providing TigerGraph read-only investigation queries.
+    Seamlessly routes between live TigerGraph GSQL queries and offline SampleGraphClient.
     """
-    def __init__(self, tg_client: Optional[Union[TigerGraphClient, SampleGraphClient]] = None):
-        if tg_client:
-            self.client = tg_client
+    def __init__(self, client: Optional[Any] = None, tg_client: Optional[Any] = None):
+        target_client = client or tg_client
+        if target_client:
+            self.client = target_client
         else:
-            # Check if live TG credentials are configured
-            if settings.tg_host and "127.0.0.1" not in settings.tg_host and settings.tg_api_token:
-                self.client = TigerGraphClient()
-            else:
+            try:
+                tg = TigerGraphClient()
+                if tg.is_connected():
+                    self.client = tg
+                else:
+                    self.client = SampleGraphClient()
+            except Exception:
                 self.client = SampleGraphClient()
 
     def is_live(self) -> bool:
+        """Returns True if connected to a real live TigerGraph cluster."""
         return isinstance(self.client, TigerGraphClient)
 
     def get_transaction(self, txn_id: str) -> Optional[TransactionDetail]:
@@ -54,6 +60,10 @@ class TigerGraphInvestigationTools:
             cust = res[0].get("CustomerOwner", [{}])[0].get("attributes", {})
             dev = res[0].get("DeviceUsed", [{}])[0].get("attributes", {})
             em = res[0].get("EmailUsed", [{}])[0].get("attributes", {})
+            
+            raw_prof = clean_entity_id(dev.get("profile_id", ""))
+            prof_id = raw_prof if is_valid_entity_id(raw_prof, "DeviceProfile") else ""
+            
             return TransactionDetail(
                 txn_id=tid,
                 amount=float(s.get("amount", 0.0)),
@@ -65,7 +75,7 @@ class TigerGraphInvestigationTools:
                 addr2=str(s.get("addr2", "87.0")),
                 card_id=str(c.get("card_id", "")),
                 customer_id=str(cust.get("customer_id", "")),
-                profile_id=str(dev.get("profile_id", "")),
+                profile_id=prof_id,
                 email_domain=str(em.get("domain", "")),
             )
 
@@ -79,22 +89,24 @@ class TigerGraphInvestigationTools:
             txns = []
             for t_item in res[0].get("Txns", []):
                 t_attr = t_item.get("attributes", {})
+                raw_prof = clean_entity_id(t_attr.get("profile_id", ""))
+                prof_id = raw_prof if is_valid_entity_id(raw_prof, "DeviceProfile") else ""
                 txns.append(TransactionDetail(
                     txn_id=str(t_attr.get("txn_id")),
                     amount=float(t_attr.get("amount", 0.0)),
                     ts=str(t_attr.get("ts_str", "")),
                     channel=str(t_attr.get("channel", "")),
                     risk_score=float(t_attr.get("risk_score", 0.0)),
-                    product_cd=str(t_attr.get("product_cd", "")),
-                    addr1=str(t_attr.get("addr1", "")),
+                    product_cd="",
                     card_id="",
                     customer_id=cid,
+                    profile_id=prof_id,
                 ))
 
         total_spend = sum(t.amount for t in txns)
         avg_spend = total_spend / len(txns) if txns else 0.0
-        cards = list(set(t.card_id for t in txns if t.card_id))
-        devs = list(set(t.profile_id for t in txns if t.profile_id and "Unknown" not in t.profile_id))
+        cards = list(set(t.card_id for t in txns if clean_entity_id(t.card_id)))
+        devs = list(set(t.profile_id for t in txns if is_valid_entity_id(t.profile_id, "DeviceProfile")))
 
         return CustomerHistoryEvidence(
             customer_id=cid,
@@ -175,23 +187,34 @@ class TigerGraphInvestigationTools:
         return NeighborhoodEvidence(center_txn_id=tid, nodes=nodes, edges=edges)
 
     def find_shared_devices(self, profile_id: str) -> SharedDeviceEvidence:
-        pid = str(profile_id).strip()
+        cleaned_pid = clean_entity_id(profile_id)
+        if not cleaned_pid or not is_valid_entity_id(cleaned_pid, "DeviceProfile"):
+            return SharedDeviceEvidence(
+                profile_id="",
+                device_info="",
+                is_shared=False,
+                connected_customers=[],
+                connected_cards=[],
+                total_txns_on_device=0,
+            )
+
         if isinstance(self.client, SampleGraphClient):
-            data = self.client.find_shared_devices(pid)
+            data = self.client.find_shared_devices(cleaned_pid)
             return SharedDeviceEvidence.model_validate(data)
         else:
-            res = self.client.run_installed_query("find_shared_devices", {"dev": pid})
+            res = self.client.run_installed_query("find_shared_devices", {"dev": cleaned_pid})
             d_attr = res[0].get("Start", [{}])[0].get("attributes", {})
-            cards = [c.get("attributes", {}).get("card_id") for c in res[0].get("Cards", [])]
-            custs = [cu.get("attributes", {}).get("customer_id") for cu in res[0].get("Customers", [])]
+            cards = [clean_entity_id(c.get("attributes", {}).get("card_id")) for c in res[0].get("Cards", []) if clean_entity_id(c.get("attributes", {}).get("card_id"))]
+            custs = [clean_entity_id(cu.get("attributes", {}).get("customer_id")) for cu in res[0].get("Customers", []) if clean_entity_id(cu.get("attributes", {}).get("customer_id"))]
             return SharedDeviceEvidence(
-                profile_id=pid,
+                profile_id=cleaned_pid,
                 device_info=str(d_attr.get("device_info", "")),
                 is_shared=len(set(cards)) > 1 or len(set(custs)) > 1,
                 connected_customers=list(set(custs)),
                 connected_cards=list(set(cards)),
                 total_txns_on_device=len(cards),
             )
+
 
     def detect_card_testing(self, card_id: str, window_hours: int = 24) -> CardTestingEvidence:
         card_hist = self.get_card_history(card_id, limit=200)
@@ -359,15 +382,18 @@ class TigerGraphInvestigationTools:
                 reasons[c] = f"Same customer profile ({card_hist.customer_id})"
 
         # 2. Cards sharing unique device profiles
-        unique_profiles = set(t.profile_id for t in card_hist.transactions if t.profile_id and "Unknown" not in t.profile_id)
+        unique_profiles = set(clean_entity_id(t.profile_id) for t in card_hist.transactions if is_valid_entity_id(t.profile_id, "DeviceProfile"))
         for prof_id in unique_profiles:
+            if not prof_id:
+                continue
             shared_dev_info = self.find_shared_devices(prof_id)
             if shared_dev_info.is_shared:
                 shared_devs.append(prof_id)
                 for sc in shared_dev_info.connected_cards:
-                    if sc != card_id and sc not in connected:
+                    if sc and sc != card_id and sc not in connected:
                         connected.append(sc)
                         reasons[sc] = f"Shared device profile: {prof_id}"
+
 
         return ConnectedCardsEvidence(
             card_id=card_id,

@@ -11,7 +11,7 @@ def test_build_device_profile_id():
     assert prof == "SAMSUNG SM-G892A | Android 7.0 | samsung browser 6.2 | 2220x1080"
     
     prof_empty = build_device_profile_id(None, None, None, None)
-    assert prof_empty == "UnknownDevice | UnknownOS | UnknownBrowser | UnknownScreen"
+    assert prof_empty == ""
 
 def test_preprocess_subdataset_entities():
     # Construct small test DataFrames

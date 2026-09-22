@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 import pandas as pd
 from src.core.config import settings
+from src.core.validation import is_valid_entity_id, clean_entity_id
 
 class SampleGraphClient:
     """
@@ -28,7 +29,7 @@ class SampleGraphClient:
         # Build fast in-memory indices
         self._tx_by_id = {str(r["txn_id"]): r for _, r in self.tx_df.iterrows()}
         self._cards_by_id = {str(r["card_id"]): r for _, r in self.cards_df.iterrows()}
-        self._dev_by_id = {str(r["profile_id"]): r for _, r in self.dev_df.iterrows()}
+        self._dev_by_id = {str(r["profile_id"]): r for _, r in self.dev_df.iterrows() if is_valid_entity_id(r.get("profile_id"), "DeviceProfile")}
         
         self._tx_by_card = {}
         self._tx_by_cust = {}
@@ -36,10 +37,10 @@ class SampleGraphClient:
         for _, r in self.tx_df.iterrows():
             cid = str(r["card_id"])
             cust = str(r["customer_id"])
-            pid = str(r.get("profile_id", "") or "")
+            pid = clean_entity_id(r.get("profile_id"))
             self._tx_by_card.setdefault(cid, []).append(r)
             self._tx_by_cust.setdefault(cust, []).append(r)
-            if pid and pid != "UnknownDevice | UnknownOS | UnknownBrowser | UnknownScreen":
+            if pid and is_valid_entity_id(pid, "DeviceProfile"):
                 self._tx_by_profile.setdefault(pid, []).append(r)
 
     def is_live_deployment(self) -> bool:
@@ -56,12 +57,15 @@ class SampleGraphClient:
         card_network = str(card_row.get("card_network", card_row.get("card4", "unknown"))) if isinstance(card_row, pd.Series) or isinstance(card_row, dict) else "unknown"
         card_type = str(card_row.get("card_type", card_row.get("card6", "unknown"))) if isinstance(card_row, pd.Series) or isinstance(card_row, dict) else "unknown"
         
-        prof_id = str(row.get("profile_id", "") or "")
-        dev_row = self._dev_by_id.get(prof_id, {})
-        device_info = str(dev_row.get("device_info", "")) if isinstance(dev_row, pd.Series) or isinstance(dev_row, dict) else ""
-        os_val = str(dev_row.get("os", "")) if isinstance(dev_row, pd.Series) or isinstance(dev_row, dict) else ""
-        browser_val = str(dev_row.get("browser", "")) if isinstance(dev_row, pd.Series) or isinstance(dev_row, dict) else ""
-        screen_val = str(dev_row.get("screen", "")) if isinstance(dev_row, pd.Series) or isinstance(dev_row, dict) else ""
+        prof_id = clean_entity_id(row.get("profile_id")) or ""
+        if not is_valid_entity_id(prof_id, "DeviceProfile"):
+            prof_id = ""
+
+        dev_row = self._dev_by_id.get(prof_id, {}) if prof_id else {}
+        device_info = str(dev_row.get("device_info", "")) if isinstance(dev_row, (pd.Series, dict)) else ""
+        os_val = str(dev_row.get("os", "")) if isinstance(dev_row, (pd.Series, dict)) else ""
+        browser_val = str(dev_row.get("browser", "")) if isinstance(dev_row, (pd.Series, dict)) else ""
+        screen_val = str(dev_row.get("screen", "")) if isinstance(dev_row, (pd.Series, dict)) else ""
 
         return {
             "txn_id": tid,
@@ -116,7 +120,7 @@ class SampleGraphClient:
         edges.append({"source": cust_id, "target": card_id, "type": "OWNS_CARD"})
 
         prof_id = tx_detail["profile_id"]
-        if prof_id and "Unknown" not in prof_id:
+        if prof_id and is_valid_entity_id(prof_id, "DeviceProfile"):
             nodes.append({"id": prof_id, "type": "DeviceProfile", "attributes": {"profile_id": prof_id, "device_info": tx_detail["device_info"]}})
             edges.append({"source": tx_detail["txn_id"], "target": prof_id, "type": "USED_DEVICE"})
 
@@ -135,21 +139,32 @@ class SampleGraphClient:
         return {"nodes": nodes, "edges": edges}
 
     def find_shared_devices(self, profile_id: str) -> Dict[str, Any]:
-        pid = str(profile_id).strip()
-        txns = self._tx_by_profile.get(pid, [])
-        connected_cards = list(set(str(r["card_id"]) for r in txns))
-        connected_custs = list(set(str(r["customer_id"]) for r in txns))
-        dev_row = self._dev_by_id.get(pid, {})
-        dev_info = str(dev_row.get("device_info", "")) if isinstance(dev_row, pd.Series) or isinstance(dev_row, dict) else ""
+        cleaned_pid = clean_entity_id(profile_id)
+        if not cleaned_pid or not is_valid_entity_id(cleaned_pid, "DeviceProfile"):
+            return {
+                "profile_id": "",
+                "device_info": "",
+                "is_shared": False,
+                "connected_customers": [],
+                "connected_cards": [],
+                "total_txns_on_device": 0,
+            }
+        
+        txns = self._tx_by_profile.get(cleaned_pid, [])
+        connected_cards = list(set(str(r["card_id"]) for r in txns if clean_entity_id(r["card_id"])))
+        connected_custs = list(set(str(r["customer_id"]) for r in txns if clean_entity_id(r["customer_id"])))
+        dev_row = self._dev_by_id.get(cleaned_pid, {})
+        dev_info = str(dev_row.get("device_info", "")) if isinstance(dev_row, (pd.Series, dict)) else ""
 
         return {
-            "profile_id": pid,
+            "profile_id": cleaned_pid,
             "device_info": dev_info,
             "is_shared": len(connected_cards) > 1 or len(connected_custs) > 1,
             "connected_customers": connected_custs,
             "connected_cards": connected_cards,
             "total_txns_on_device": len(txns),
         }
+
 
     def get_historical_cases(self, customer_id: Optional[str] = None, card_id: Optional[str] = None, pattern: Optional[str] = None, top_k: int = 5) -> List[Dict[str, Any]]:
         if self.cc_df.empty:
