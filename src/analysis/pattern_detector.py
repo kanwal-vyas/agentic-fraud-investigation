@@ -6,6 +6,7 @@ from src.models.evidence import (
     CardHistoryEvidence,
     SharedDeviceEvidence,
     CardTestingEvidence,
+    VelocityEvidence,
     RegionalAnomalyEvidence,
     HistoricalCaseEvidence,
     PatternDetectionResult,
@@ -28,8 +29,7 @@ class FraudPatternDetector:
 
     def detect_patterns(self, txn_id: str) -> List[PatternDetectionResult]:
         """
-        Runs comprehensive pattern detection pipeline for a flagged transaction.
-        Returns ordered candidate pattern results with evidence and heuristic confidence.
+        Runs comprehensive pattern detection pipeline for a flagged transaction by querying tools.
         """
         tx = self.tools.get_transaction(txn_id)
         if not tx:
@@ -43,15 +43,52 @@ class FraudPatternDetector:
                 rationale="No graph transaction record found.",
             )]
 
-        results = []
         card_id = tx.card_id
         card_hist = self.tools.get_card_history(card_id, limit=50)
-
-        # -------------------------------------------------------------
-        # 1. Card Testing Check
-        # -------------------------------------------------------------
         testing_ev = self.tools.detect_card_testing(card_id)
-        if testing_ev.is_testing_detected:
+        reg_ev = self.tools.detect_regional_anomaly(txn_id)
+        dev_ev = None
+        if tx.profile_id and is_valid_entity_id(tx.profile_id, "DeviceProfile"):
+            dev_ev = self.tools.find_shared_devices(tx.profile_id)
+
+        return self.detect_patterns_from_evidence(
+            tx=tx,
+            card_hist=card_hist,
+            shared_devices=dev_ev,
+            regional=reg_ev,
+            testing_ev=testing_ev
+        )
+
+    def detect_patterns_from_evidence(
+        self,
+        tx: Optional[TransactionDetail],
+        card_hist: Optional[CardHistoryEvidence] = None,
+        shared_devices: Optional[SharedDeviceEvidence] = None,
+        velocity: Optional[VelocityEvidence] = None,
+        regional: Optional[RegionalAnomalyEvidence] = None,
+        testing_ev: Optional[CardTestingEvidence] = None,
+    ) -> List[PatternDetectionResult]:
+        """
+        Evaluates fraud patterns strictly against the provided evidence objects.
+        Guarantees that unqueried tools or missing evidence cannot inject phantom patterns.
+        """
+        if not tx:
+            return [PatternDetectionResult(
+                pattern=FraudPattern.NONE,
+                detected=True,
+                heuristic_confidence=0.0,
+                claims=["No transaction evidence provided."],
+                supporting_txn_ids=[],
+                supporting_entity_ids=[],
+                rationale="No graph transaction record found.",
+            )]
+
+        results = []
+        txn_id = tx.txn_id
+        card_id = tx.card_id
+
+        # 1. Card Testing Check (Requires explicit CardTestingEvidence)
+        if testing_ev and testing_ev.is_testing_detected:
             support_txns = [t.txn_id for t in testing_ev.micro_auth_transactions] + [t.txn_id for t in testing_ev.subsequent_large_purchases]
             results.append(PatternDetectionResult(
                 pattern=FraudPattern.CARD_TESTING,
@@ -66,48 +103,39 @@ class FraudPatternDetector:
                 rationale="Characteristic card testing: rapid micro-authorizations to validate active card status before large purchase.",
             ))
 
-        # -------------------------------------------------------------
-        # 2. Out of Region Use Check
-        # -------------------------------------------------------------
-        reg_ev = self.tools.detect_regional_anomaly(txn_id)
-        if reg_ev.is_anomaly and tx.channel == "in_person":
+        # 2. Out of Region Use Check (Requires explicit RegionalAnomalyEvidence)
+        if regional and regional.is_anomaly and tx.channel == "in_person":
             results.append(PatternDetectionResult(
                 pattern=FraudPattern.OUT_OF_REGION_USE,
                 detected=True,
-                heuristic_confidence=reg_ev.heuristic_confidence,
+                heuristic_confidence=regional.heuristic_confidence,
                 claims=[
-                    f"In-person transaction in remote billing region {reg_ev.current_addr1}",
-                    f"Cardholder historical baseline established in home region {reg_ev.historical_home_addr1} ({reg_ev.prior_home_txns_count} prior transactions)"
+                    f"In-person transaction in remote billing region {regional.current_addr1}",
+                    f"Cardholder historical baseline established in home region {regional.historical_home_addr1} ({regional.prior_home_txns_count} prior transactions)"
                 ],
                 supporting_txn_ids=[txn_id],
-                supporting_entity_ids=[card_id, f"Region-{reg_ev.current_addr1}"],
-                rationale=f"Card-present use in billing region {reg_ev.current_addr1} where cardholder has no history while retaining card.",
+                supporting_entity_ids=[card_id, f"Region-{regional.current_addr1}"],
+                rationale=f"Card-present use in billing region {regional.current_addr1} where cardholder has no history while retaining card.",
             ))
 
-        # -------------------------------------------------------------
-        # 3. Shared Device Syndicate / Undocumented Syndicate Check
-        # -------------------------------------------------------------
-        if tx.profile_id and is_valid_entity_id(tx.profile_id, "DeviceProfile"):
-            dev_ev = self.tools.find_shared_devices(tx.profile_id)
-            if dev_ev.is_shared and len(dev_ev.connected_cards) >= 2:
+        # 3. Shared Device Syndicate Check (Requires explicit SharedDeviceEvidence)
+        if shared_devices and shared_devices.is_shared and len(shared_devices.connected_cards) >= 2:
+            if tx.profile_id and is_valid_entity_id(tx.profile_id, "DeviceProfile"):
                 results.append(PatternDetectionResult(
                     pattern=FraudPattern.UNDOCUMENTED,
                     detected=True,
                     heuristic_confidence=0.88,
                     claims=[
-                        f"Device profile {tx.profile_id} is shared across {len(dev_ev.connected_cards)} distinct cards",
-                        f"Connected customers: {', '.join(dev_ev.connected_customers)}"
+                        f"Device profile {tx.profile_id} is shared across {len(shared_devices.connected_cards)} distinct cards",
+                        f"Connected customers: {', '.join(shared_devices.connected_customers)}"
                     ],
                     supporting_txn_ids=[txn_id],
-                    supporting_entity_ids=[tx.profile_id] + dev_ev.connected_cards,
-                    rationale=f"Coordinated syndicate: identical device profile shared across multiple cardholders in a short window.",
+                    supporting_entity_ids=[tx.profile_id] + shared_devices.connected_cards,
+                    rationale="Coordinated syndicate: identical device profile shared across multiple cardholders in a short window.",
                 ))
 
-        # -------------------------------------------------------------
-        # 4. Card Not Present New Device Check
-        # -------------------------------------------------------------
-        if tx.channel == "online" and tx.profile_id and is_valid_entity_id(tx.profile_id, "DeviceProfile"):
-            # Check if device is new for this card
+        # 4. Card Not Present New Device Check (Requires CardHistoryEvidence & valid profile)
+        if tx.channel == "online" and tx.profile_id and is_valid_entity_id(tx.profile_id, "DeviceProfile") and card_hist:
             prior_dev_txns = [t for t in card_hist.transactions if t.txn_id != tx.txn_id and clean_entity_id(t.profile_id) == tx.profile_id]
             if not prior_dev_txns:
                 results.append(PatternDetectionResult(
@@ -123,11 +151,8 @@ class FraudPatternDetector:
                     rationale="Card-not-present authorization initiated from a new device profile with no prior card history.",
                 ))
 
-
-        # -------------------------------------------------------------
-        # 5. Standard Card Not Present Fraud Check
-        # -------------------------------------------------------------
-        if tx.channel == "online" and tx.amount >= 100.0:
+        # 5. Standard Card Not Present Fraud Check (Requires CardHistoryEvidence)
+        if tx.channel == "online" and tx.amount >= 100.0 and card_hist:
             online_recent = [t for t in card_hist.transactions if t.channel == "online"]
             if len(online_recent) >= 2:
                 results.append(PatternDetectionResult(
@@ -143,9 +168,7 @@ class FraudPatternDetector:
                     rationale="Card-not-present fraud: unusual online transaction amount deviating from typical card activity.",
                 ))
 
-        # -------------------------------------------------------------
         # 6. Fallback: Legitimate (None)
-        # -------------------------------------------------------------
         if not results:
             results.append(PatternDetectionResult(
                 pattern=FraudPattern.NONE,

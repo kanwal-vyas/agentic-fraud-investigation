@@ -150,14 +150,8 @@ class AgenticFraudInvestigator:
         trigger: InvestigationTrigger,
         state: WorkingInvestigationState
     ) -> InvestigationContext:
-        """Synthesizes GraphRAG context from trigger and working state."""
-        return self.synthesizer.build_context_for_case(
-            case_id=trigger.case_id,
-            opened_at=trigger.opened_at or "2016-12-05 01:55:28",
-            trigger_type=trigger.trigger_type.value,
-            trigger_text=trigger.trigger_details,
-            flagged_txn_id=trigger.transaction_id,
-            card_id=trigger.card_id,
-            customer_id=trigger.customer_id,
-            risk_score=trigger.model_risk_score
+        """Synthesizes GraphRAG context strictly from trigger and working state evidence."""
+        return self.synthesizer.build_context_from_working_state(
+            trigger=trigger,
+            state=state
         )

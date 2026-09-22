@@ -9,6 +9,7 @@ from src.models.context import (
     ContradictoryEvidenceItem,
     EvidenceGapItem
 )
+from src.core.validation import is_valid_entity_id, clean_entity_id
 from src.rag.corpus import GraphRAGCorpus
 from src.rag.retriever import GraphRAGRetriever
 from src.rag.graph_adapter import GraphEvidenceAdapter
@@ -55,7 +56,9 @@ class InvestigationContextSynthesizer:
         card_hist = self.tools.get_card_history(card_id, limit=50)
         
         profile_id = tx.profile_id if (tx and tx.profile_id) else ""
-        shared_devices = self.tools.find_shared_devices(profile_id) if profile_id else None
+        shared_devices = None
+        if profile_id and is_valid_entity_id(profile_id, "DeviceProfile"):
+            shared_devices = self.tools.find_shared_devices(profile_id)
         velocity = self.tools.detect_velocity(card_id, window_hours=48.0)
         regional = self.tools.detect_regional_anomaly(txn_str) if tx else None
         connected_cards = self.tools.find_connected_cards(card_id)
@@ -63,7 +66,102 @@ class InvestigationContextSynthesizer:
         # 2. Detect Graph Fraud Patterns
         detected_patterns = self.detector.detect_patterns(txn_id=txn_str)
 
-        # 3. Transform Graph Evidence into GraphRAG Query Payload
+        return self._assemble_context(
+            case_id=case_id,
+            opened_at=opened_at,
+            trigger_type=trigger_type,
+            trigger_text=trigger_text,
+            flagged_txn_id=flagged_txn_id,
+            card_id=card_id,
+            customer_id=customer_id,
+            risk_score=risk_score,
+            tx=tx,
+            cust_hist=cust_hist,
+            card_hist=card_hist,
+            shared_devices=shared_devices,
+            velocity=velocity,
+            regional=regional,
+            connected_cards=connected_cards,
+            detected_patterns=detected_patterns
+        )
+
+    def build_context_from_working_state(
+        self,
+        trigger: Any,
+        state: Any
+    ) -> InvestigationContext:
+        """
+        Synthesizes GraphRAG context strictly from the evidence collected by the agent.
+        Guarantees that unqueried tools do not inject phantom patterns or unverified claims.
+        """
+        txn_str = str(trigger.transaction_id)
+        tools_called = set(state.tools_called)
+
+        # Always resolve core transaction detail for baseline context
+        tx = self.tools.get_transaction(txn_str)
+        cust_hist = self.tools.get_customer_history(trigger.customer_id, limit=50) if "get_customer_history" in tools_called else None
+        card_hist = self.tools.get_card_history(trigger.card_id, limit=50) if "get_card_history" in tools_called else None
+        
+        shared_devices = None
+        if "find_shared_devices" in tools_called and tx and tx.profile_id and is_valid_entity_id(tx.profile_id, "DeviceProfile"):
+            shared_devices = self.tools.find_shared_devices(tx.profile_id)
+
+        velocity = self.tools.detect_velocity(trigger.card_id, window_hours=48.0) if "detect_velocity" in tools_called else None
+        regional = self.tools.detect_regional_anomaly(txn_str) if ("detect_regional_anomaly" in tools_called and tx) else None
+        connected_cards = self.tools.find_connected_cards(trigger.card_id) if "find_connected_cards" in tools_called else None
+        testing_ev = self.tools.detect_card_testing(trigger.card_id) if "detect_card_testing" in tools_called else None
+
+        detected_patterns = self.detector.detect_patterns_from_evidence(
+            tx=tx,
+            card_hist=card_hist,
+            shared_devices=shared_devices,
+            velocity=velocity,
+            regional=regional,
+            testing_ev=testing_ev
+        )
+
+        return self._assemble_context(
+            case_id=trigger.case_id,
+            opened_at=trigger.opened_at or "2016-12-05 01:55:28",
+            trigger_type=trigger.trigger_type.value,
+            trigger_text=trigger.trigger_details,
+            flagged_txn_id=trigger.transaction_id,
+            card_id=trigger.card_id,
+            customer_id=trigger.customer_id,
+            risk_score=trigger.model_risk_score,
+            tx=tx,
+            cust_hist=cust_hist,
+            card_hist=card_hist,
+            shared_devices=shared_devices,
+            velocity=velocity,
+            regional=regional,
+            connected_cards=connected_cards,
+            detected_patterns=detected_patterns
+        )
+
+    def _assemble_context(
+        self,
+        case_id: str,
+        opened_at: str,
+        trigger_type: str,
+        trigger_text: str,
+        flagged_txn_id: int,
+        card_id: str,
+        customer_id: str,
+        risk_score: float,
+        tx: Optional[Any],
+        cust_hist: Optional[Any],
+        card_hist: Optional[Any],
+        shared_devices: Optional[Any],
+        velocity: Optional[Any],
+        regional: Optional[Any],
+        connected_cards: Optional[Any],
+        detected_patterns: List[Any]
+    ) -> InvestigationContext:
+        txn_str = str(flagged_txn_id)
+        profile_id = tx.profile_id if (tx and tx.profile_id) else ""
+
+        # Transform Graph Evidence into GraphRAG Query Payload
         adapted = self.adapter.extract_retrieval_query(
             tx=tx,
             cust_hist=cust_hist,
@@ -75,7 +173,7 @@ class InvestigationContextSynthesizer:
             detected_patterns=detected_patterns
         )
 
-        # 4. Historical Case Retrieval (Both Confirmed Fraud & Cleared)
+        # Historical Case Retrieval (Both Confirmed Fraud & Cleared)
         confirmed_cases = self.retriever.retrieve_historical_cases(
             query_text=adapted["query_text"],
             customer_id=customer_id,
@@ -91,8 +189,8 @@ class InvestigationContextSynthesizer:
             top_k=3
         )
 
-        # 5. Policy Rule Retrieval
-        pattern_names = [p.pattern for p in detected_patterns]
+        # Policy Rule Retrieval
+        pattern_names = [p.pattern.value if hasattr(p.pattern, "value") else str(p.pattern) for p in detected_patterns]
         amount_val = tx.amount if tx else 0.0
         applicable_policies = self.retriever.retrieve_applicable_policies(
             query_text=f"{trigger_type} {adapted['query_text']}",
@@ -103,7 +201,7 @@ class InvestigationContextSynthesizer:
             top_k=4
         )
 
-        # 6. Regulatory Reference Retrieval
+        # Regulatory Reference Retrieval
         reg_references = self.retriever.retrieve_regulatory_references(
             query_text=f"{trigger_type} {' '.join(pattern_names)}",
             exposure_usd=amount_val,
@@ -265,6 +363,22 @@ class InvestigationContextSynthesizer:
                 )
             )
 
+        patterns_serialized = []
+        for p in detected_patterns:
+            d = p.model_dump() if hasattr(p, "model_dump") else dict(p)
+            pat_val = p.pattern.value if hasattr(p.pattern, "value") else str(p.pattern)
+            if pat_val == "card_testing":
+                d["source_id"] = "tool:detect_card_testing"
+            elif pat_val == "out_of_region_use":
+                d["source_id"] = "tool:detect_regional_anomaly"
+            elif pat_val == "undocumented":
+                d["source_id"] = "tool:find_shared_devices"
+            elif pat_val in ["card_not_present_fraud", "card_not_present_new_device"]:
+                d["source_id"] = "tool:get_card_history"
+            else:
+                d["source_id"] = f"graph:txn:{txn_str}"
+            patterns_serialized.append(d)
+
         return InvestigationContext(
             case_id=case_id,
             opened_at=opened_at,
@@ -276,7 +390,7 @@ class InvestigationContextSynthesizer:
             profile_id=profile_id,
             model_risk_score=risk_score,
             graph_evidence_summary=adapted["graph_evidence_bullets"],
-            detected_patterns=[p.model_dump() for p in detected_patterns],
+            detected_patterns=patterns_serialized,
             historical_cases_confirmed_fraud=confirmed_cases,
             historical_cases_cleared=cleared_cases,
             applicable_policies=applicable_policies,

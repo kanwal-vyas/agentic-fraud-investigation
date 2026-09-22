@@ -145,3 +145,125 @@ def test_evidence_planner_justification():
     )
     reqs_weak = planner.plan_requests(ctx_weak, EvidenceSufficiencyState.INSUFFICIENT, UncertaintyAssessment(level=UncertaintyLevel.MATERIAL, reasons=["Weak score"]))
     assert any(r.request_type == "customer_validation" for r in reqs_weak)
+
+def test_pattern_provenance_integrity():
+    investigator = AgenticFraudInvestigator()
+    trigger = InvestigationTrigger(
+        case_id="HHG-003",
+        trigger_type=TriggerType.CUSTOMER_REPORT,
+        transaction_id=3048997,
+        customer_id="C01128",
+        card_id="C01128-K1",
+        model_risk_score=0.12,
+        trigger_details="Customer C01128 message: 'I never made this $117.00 purchase. Please check my card.' Refers to 3048997."
+    )
+    result = investigator.investigate(trigger)
+
+    # 1. Verify every reasoning factor has a valid source_id
+    for factor in result.final_assessment.reasoning_factors:
+        assert factor.source_id is not None and len(factor.source_id) > 0
+
+    # 2. Verify no phantom shared-device syndicate pattern since find_shared_devices was not called
+    assert "find_shared_devices" not in result.investigation_steps
+    for pat in result.final_assessment.suspected_patterns:
+        assert pat != "undocumented"
+
+def test_valid_r2_block_card():
+    investigator = AgenticFraudInvestigator()
+    trigger = InvestigationTrigger(
+        case_id="HHG-003",
+        trigger_type=TriggerType.CUSTOMER_REPORT,
+        transaction_id=3048997,
+        customer_id="C01128",
+        card_id="C01128-K1",
+        model_risk_score=0.12,
+        trigger_details="Customer C01128 message: 'I never made this $117.00 purchase. Please check my card.' Refers to 3048997."
+    )
+    result = investigator.investigate(trigger)
+
+    # Verify Policy Decision
+    assert len(result.policy_decisions) > 0
+    pol = result.policy_decisions[0]
+    assert "R2" in pol["rules_evaluated"]
+    assert pol["permitted"] is True
+    assert pol["approval_required"] is True
+    assert pol["approval_route"] == "L1"
+
+    # Verify NBA
+    assert result.next_best_action.action.value == "BLOCK_CARD"
+    assert "R2" in result.next_best_action.policy_references
+    assert result.approval_required is True
+    assert result.approval_route.value == "L1"
+
+def test_policy_denial_rejects_destructive_nba():
+    from src.reasoning.nba_engine import NextBestActionEngine
+    from src.reasoning.policy_engine import PolicyDecisionEngine
+    from src.models.reasoning import FraudAssessmentOutcome, PolicyAction
+
+    policy_engine = PolicyDecisionEngine()
+    nba_engine = NextBestActionEngine(policy_engine)
+
+    # Context with weak score (0.45) and INSUFFICIENT evidence where Rule R1 prohibits BLOCK_CARD
+    ctx_weak = InvestigationContext(
+        case_id="HHG-TEST-R1",
+        opened_at="2016-07-01 00:00:00",
+        trigger_type="risk_score",
+        trigger_text="Weak alert 0.45",
+        flagged_txn_id=2987002,
+        card_id="card_456",
+        customer_id="cust_456",
+        profile_id="",
+        model_risk_score=0.45,
+        graph_evidence_summary=["Transaction 2987002 for $100.00"]
+    )
+
+    # Evaluate direct policy check
+    pol_eval = policy_engine.evaluate_policy_compliance(
+        action=PolicyAction.BLOCK_CARD,
+        ctx=ctx_weak,
+        assessment=FraudAssessmentOutcome.INSUFFICIENT_EVIDENCE,
+        sufficiency=EvidenceSufficiencyState.INSUFFICIENT,
+        uncertainty=UncertaintyAssessment(level=UncertaintyLevel.HIGH, reasons=["Weak uncorroborated score"])
+    )
+    assert pol_eval["permitted"] is False
+    assert any("Rule R1 Violation" in v for v in pol_eval["violations"])
+
+    # Determine NBA: Must reject destructive BLOCK_CARD and select safe STEP_UP_AUTH
+    nba = nba_engine.determine_next_best_action(
+        ctx=ctx_weak,
+        assessment=FraudAssessmentOutcome.INSUFFICIENT_EVIDENCE,
+        sufficiency=EvidenceSufficiencyState.INSUFFICIENT,
+        uncertainty=UncertaintyAssessment(level=UncertaintyLevel.HIGH, reasons=["Weak uncorroborated score"]),
+        confidence=0.4
+    )
+    assert nba.action != PolicyAction.BLOCK_CARD
+    assert nba.action in [PolicyAction.STEP_UP_AUTH, PolicyAction.VERIFY_WITH_CUSTOMER]
+    assert "R1" in nba.policy_references
+
+def test_approval_required_flag():
+    from src.core.constants import PolicyAction
+    from src.reasoning.policy_engine import PolicyDecisionEngine
+    from src.models.reasoning import FraudAssessmentOutcome
+
+    policy_engine = PolicyDecisionEngine()
+    ctx = InvestigationContext(
+        case_id="HHG-TEST-AUTH",
+        opened_at="2016-07-01 00:00:00",
+        trigger_type="customer_report",
+        trigger_text="Customer reported fraud",
+        flagged_txn_id=2987002,
+        card_id="card_456",
+        customer_id="cust_456",
+        profile_id="",
+        model_risk_score=0.85,
+        graph_evidence_summary=["Transaction 2987002 for $600.00"]
+    )
+    pol_eval = policy_engine.evaluate_policy_compliance(
+        action=PolicyAction.BLOCK_CARD,
+        ctx=ctx,
+        assessment=FraudAssessmentOutcome.LIKELY_FRAUD,
+        sufficiency=EvidenceSufficiencyState.SUFFICIENT,
+        uncertainty=UncertaintyAssessment(level=UncertaintyLevel.LOW, reasons=[])
+    )
+    assert pol_eval["approval_required"] is True
+    assert pol_eval["approval_route"] in ["L1", "L2"]

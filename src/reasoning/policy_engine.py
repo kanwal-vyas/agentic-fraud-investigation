@@ -34,23 +34,66 @@ class PolicyDecisionEngine:
                 except Exception:
                     pass
 
-        applicable_rule_ids = [p.rule_id for p in ctx.applicable_policies]
+        rules_evaluated: List[str] = []
         violations = []
         prerequisites = []
+        required_action: Optional[str] = None
+
+        # -------------------------------------------------------------
+        # Rule R2: Customer Direct Denial Mandate
+        # -------------------------------------------------------------
+        if ctx.trigger_type == "customer_report":
+            rules_evaluated.append("R2")
+            required_action = "BLOCK_CARD"
+
+        # -------------------------------------------------------------
+        # Rule R3: Customer Direct Confirmation Mandate
+        # -------------------------------------------------------------
+        if ctx.trigger_type == "customer_confirmed":
+            rules_evaluated.append("R3")
+            required_action = "CLOSE_NO_FRAUD"
 
         # -------------------------------------------------------------
         # Rule R1: Verify before you block on weak single signal
         # -------------------------------------------------------------
         if action in [PolicyAction.BLOCK_CARD, PolicyAction.BLOCK_ALL_CARDS]:
+            rules_evaluated.append("R1")
             if ctx.trigger_type != "customer_report" and sufficiency != EvidenceSufficiencyState.SUFFICIENT:
                 if ctx.model_risk_score < 0.70:
                     violations.append("Rule R1 Violation: Attempting to block card on weak uncorroborated score without customer verification.")
                     prerequisites.append("Mandatory Customer Verification via Out-of-Band SMS / STEP_UP_AUTH (Rule R1).")
+        elif action in [PolicyAction.STEP_UP_AUTH, PolicyAction.VERIFY_WITH_CUSTOMER]:
+            rules_evaluated.append("R1")
+
+        # -------------------------------------------------------------
+        # Rule R4: Low Risk Score Baseline Alignment
+        # -------------------------------------------------------------
+        if ctx.model_risk_score < 0.20 and assessment == FraudAssessmentOutcome.LIKELY_BENIGN:
+            rules_evaluated.append("R4")
+
+        # -------------------------------------------------------------
+        # Rule R5: Card Testing Sequence
+        # -------------------------------------------------------------
+        if action == PolicyAction.DECLINE_TRANSACTION or any("card_testing" in p.get("pattern", "") for p in ctx.detected_patterns):
+            rules_evaluated.append("R5")
+
+        # -------------------------------------------------------------
+        # Rule R6: Shared Device Syndicate Scope
+        # -------------------------------------------------------------
+        if action == PolicyAction.MONITOR_CONNECTED_CARDS or any(p.get("pattern") in ["undocumented", "account_takeover"] for p in ctx.detected_patterns):
+            rules_evaluated.append("R6")
+
+        # -------------------------------------------------------------
+        # Rule R7: Recurring Cleared Precedent / Travel Verification
+        # -------------------------------------------------------------
+        if action == PolicyAction.VERIFY_WITH_CUSTOMER and (sufficiency == EvidenceSufficiencyState.CONFLICTING or ctx.historical_cases_cleared):
+            rules_evaluated.append("R7")
 
         # -------------------------------------------------------------
         # Rule R10: Proportional Blocking Safeguard
         # -------------------------------------------------------------
         if action == PolicyAction.BLOCK_ALL_CARDS:
+            rules_evaluated.append("R10")
             has_multi_card_fraud = any(
                 p.get("pattern") in ["account_takeover", "undocumented"] and p.get("heuristic_confidence", 0) > 0.8
                 for p in ctx.detected_patterns
@@ -67,6 +110,7 @@ class PolicyDecisionEngine:
 
         # Rule R8: High Exposure Escalation (> $500 with uncertainty -> L1/L2)
         if amount_usd > 500.0 and uncertainty.level.value in ["material", "high"]:
+            rules_evaluated.append("R8")
             approval_required = True
             route = ApprovalRoute.L1 if amount_usd <= 2500.0 else ApprovalRoute.L2
 
@@ -79,14 +123,24 @@ class PolicyDecisionEngine:
         if action == PolicyAction.BLOCK_CARD and amount_usd > 2500.0:
             route = ApprovalRoute.L2
 
+        # Ingest applicable policies from context
+        for pol in ctx.applicable_policies:
+            if pol.rule_id not in rules_evaluated:
+                rules_evaluated.append(pol.rule_id)
+
+        # Deduplicate
+        rules_evaluated = list(dict.fromkeys(rules_evaluated))
         is_permitted = len(violations) == 0
 
         return {
             "action": action.value,
+            "permitted": is_permitted,
             "is_permitted": is_permitted,
+            "required_action": required_action,
             "approval_required": approval_required,
             "approval_route": route.value,
             "violations": violations,
             "prerequisites": prerequisites,
-            "governing_rules": applicable_rule_ids
+            "rules_evaluated": rules_evaluated,
+            "governing_rules": rules_evaluated
         }

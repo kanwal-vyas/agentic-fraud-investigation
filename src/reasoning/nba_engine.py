@@ -120,17 +120,51 @@ class NextBestActionEngine:
             uncertainty=uncertainty
         )
 
+        evaluated_rules = set(pol_eval.get("rules_evaluated", []))
+        is_permitted = pol_eval.get("permitted", pol_eval.get("is_permitted", False))
+
+        destructive_actions = {
+            PolicyAction.BLOCK_CARD,
+            PolicyAction.BLOCK_ALL_CARDS,
+            PolicyAction.DECLINE_TRANSACTION,
+            PolicyAction.FILE_REPORT
+        }
+
+        # Hard Invariant Enforcement:
+        # 1. Destructive actions MUST be permitted by policy.
+        # 2. Destructive actions MUST have policy_references as a non-empty subset of evaluated_rules.
+        # If invariant fails, reject destructive action and fallback safely.
+        if primary_action in destructive_actions:
+            matching_refs = [r for r in policy_refs if r in evaluated_rules]
+            if not is_permitted or not matching_refs:
+                # Rejection & Safe Fallback
+                violations_str = "; ".join(pol_eval.get("violations", ["Policy invariant check failed"]))
+                primary_action = PolicyAction.STEP_UP_AUTH if ctx.trigger_type != "customer_report" else PolicyAction.VERIFY_WITH_CUSTOMER
+                rationale = f"Policy conflict/violation rejected destructive action: {violations_str}. Fallback to non-destructive verification."
+                policy_refs = ["R1"]
+                # Re-evaluate policy for fallback action
+                pol_eval = self.policy_engine.evaluate_policy_compliance(
+                    action=primary_action,
+                    ctx=ctx,
+                    assessment=assessment,
+                    sufficiency=sufficiency,
+                    uncertainty=uncertainty
+                )
+                evaluated_rules = set(pol_eval.get("rules_evaluated", []))
+
+        # Ensure policy_references are valid evaluated rules
+        final_policy_refs = [r for r in policy_refs if r in evaluated_rules]
+        if not final_policy_refs and evaluated_rules:
+            final_policy_refs = list(evaluated_rules)[:2]
+
         approval_route = ApprovalRoute(pol_eval["approval_route"])
         approval_req = pol_eval["approval_required"]
-
-        # Deduplicate policy references
-        policy_refs = list(dict.fromkeys(policy_refs))
 
         return NextBestAction(
             action=primary_action,
             rationale=rationale,
             supporting_evidence_ids=evidence_ids,
-            policy_references=policy_refs,
+            policy_references=final_policy_refs,
             confidence=confidence,
             approval_required=approval_req,
             approval_route=approval_route,

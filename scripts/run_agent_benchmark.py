@@ -234,12 +234,40 @@ def run_benchmark():
     print(f"Evidence Request Rate:              {ev_req_rate:.1f}%")
     print(f"Justified Evidence Request Rate:    {justified_rate:.1f}%")
     print(f"Reassessment Rate:                  {reassess_rate:.1f}%")
-    print(f"Policy Conflict Rate:               {policy_conflicts:.1f}%")
-    print(f"Unsupported Action Rate:            {unsupported_rate:.1f}% (Target: 0%)")
-    print(f"Missing-Entity Contamination Cases: {contaminated_cases} (Target: 0)")
+    # Invariant Verification across all benchmark results
+    policy_reference_mismatches = 0
+    destructive_without_policy_ref = 0
+    destructive_when_denied = 0
+
+    destructive_action_set = {"block_card", "block_all_cards", "freeze_account", "decline_transaction"}
+
+    for res in results:
+        pol_dict = res.policy_decisions[0] if res.policy_decisions else {}
+        evaluated_rules = set(pol_dict.get("rules_evaluated", []))
+        is_permitted = pol_dict.get("permitted", pol_dict.get("is_permitted", False))
+        nba_action = res.next_best_action.action.value
+        nba_refs = set(res.next_best_action.policy_references)
+
+        if nba_action in destructive_action_set:
+            if not is_permitted:
+                destructive_when_denied += 1
+            if not nba_refs:
+                destructive_without_policy_ref += 1
+            if not nba_refs.issubset(evaluated_rules):
+                policy_reference_mismatches += 1
+
+    print(f"Policy Reference Mismatches:        {policy_reference_mismatches} (Target: 0)")
+    print(f"Unreferenced Destructive Actions:   {destructive_without_policy_ref} (Target: 0)")
+    print(f"Denied Destructive Actions Emitted: {destructive_when_denied} (Target: 0)")
     print("=" * 80)
-    if contaminated_cases == 0 and unsupported_rate == 0.0:
-        print("[SUCCESS] Stage 7 Agentic Investigation Orchestrator audit criteria passed!")
+    if (
+        contaminated_cases == 0 and
+        unsupported_rate == 0.0 and
+        policy_reference_mismatches == 0 and
+        destructive_without_policy_ref == 0 and
+        destructive_when_denied == 0
+    ):
+        print("[SUCCESS] Stage 7 Agentic Investigation Orchestrator audit & policy invariant criteria passed!")
     else:
         print("[WARNING] Audit criteria violation detected.")
 
