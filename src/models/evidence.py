@@ -13,6 +13,8 @@ class TransactionDetail(BaseModel):
     addr2: Optional[str] = "87.0"
     card_id: str
     customer_id: str
+    card_network: Optional[str] = "unknown"
+    card_type: Optional[str] = "unknown"
     profile_id: Optional[str] = ""
     email_domain: Optional[str] = ""
 
