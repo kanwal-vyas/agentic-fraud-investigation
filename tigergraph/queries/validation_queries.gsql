@@ -1,0 +1,65 @@
+// Minimal GSQL Validation Queries for Stage 2
+// Graph: FraudGraph
+
+USE GRAPH FraudGraph
+
+// 1. Get all cards owned by a customer
+CREATE OR REPLACE QUERY get_customer_cards(VERTEX<Customer> cust) FOR GRAPH FraudGraph {
+    Start = {cust};
+    Cards = SELECT c FROM Start:s -(OWNS_CARD:e)-> Card:c;
+    PRINT Cards[Cards.card_id, Cards.issuer_code, Cards.card_network, Cards.card_type];
+}
+
+// 2. Get transaction details with connected card, device, region, and email
+CREATE OR REPLACE QUERY get_transaction_details(VERTEX<Transaction> txn) FOR GRAPH FraudGraph {
+    Start = {txn};
+    PRINT Start[Start.txn_id, Start.amount, Start.ts_str, Start.channel, Start.risk_score, Start.product_cd, Start.addr1, Start.addr2];
+    
+    Cards = SELECT c FROM Start:s -(PERFORMED_BY:e)-> Card:c;
+    PRINT Cards[Cards.card_id, Cards.customer_id];
+
+    Devices = SELECT d FROM Start:s -(USED_DEVICE:e)-> DeviceProfile:d;
+    PRINT Devices[Devices.profile_id, Devices.device_info, Devices.os, Devices.browser, Devices.screen];
+
+    Regions = SELECT r FROM Start:s -(BILLED_IN:e)-> BillingRegion:r;
+    PRINT Regions[Regions.region_code, Regions.country_code];
+
+    Emails = SELECT em FROM Start:s -(PURCHASER_EMAIL:e)-> EmailDomain:em;
+    PRINT Emails[Emails.domain];
+}
+
+// 3. Get recent transactions for a card
+CREATE OR REPLACE QUERY get_card_transactions(VERTEX<Card> c, INT max_count = 50) FOR GRAPH FraudGraph {
+    Start = {c};
+    Txns = SELECT t FROM Start:s -(PERFORMED_TXN:e)-> Transaction:t
+           ORDER BY t.ts DESC
+           LIMIT max_count;
+    PRINT Txns[Txns.txn_id, Txns.amount, Txns.ts_str, Txns.channel, Txns.risk_score, Txns.addr1];
+}
+
+// 4. Get device profile and other transactions/cards sharing this device
+CREATE OR REPLACE QUERY get_transaction_device(VERTEX<Transaction> txn) FOR GRAPH FraudGraph {
+    Start = {txn};
+    Dev = SELECT d FROM Start:s -(USED_DEVICE:e)-> DeviceProfile:d;
+    
+    ConnectedTxns = SELECT t FROM Dev:d -(USED_IN_TXN:e)-> Transaction:t
+                    LIMIT 100;
+
+    ConnectedCards = SELECT c FROM ConnectedTxns:t -(PERFORMED_BY:e)-> Card:c;
+    
+    PRINT Dev;
+    PRINT ConnectedCards[ConnectedCards.card_id, ConnectedCards.customer_id];
+    PRINT ConnectedTxns[ConnectedTxns.txn_id, ConnectedTxns.amount, ConnectedTxns.ts_str, ConnectedTxns.risk_score];
+}
+
+// 5. Get transactions and card associated with a closed case
+CREATE OR REPLACE QUERY get_case_transactions(VERTEX<ClosedCase> cc) FOR GRAPH FraudGraph {
+    Start = {cc};
+    PRINT Start;
+    
+    Cards = SELECT c FROM Start:s -(ON_CARD:e)-> Card:c;
+    PRINT Cards;
+    
+    Txns = SELECT t FROM Start:s -(INVOLVES:e)-> Transaction:t;
+    PRINT Txns;
+}

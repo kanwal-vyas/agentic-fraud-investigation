@@ -32,10 +32,11 @@ wheels/
 .vscode/
 .idea/
 
-# Large raw dataset files exceeding GitHub 100MB limit
+# Large raw and generated dataset files
 HHGOA_IEEE/transactions.csv
 data/raw/transactions.csv
-data/processed/transactions_full.csv
+data/processed/
+data/graph/
 
 # Node / UI
 node_modules/
