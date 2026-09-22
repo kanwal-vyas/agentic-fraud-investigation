@@ -1,0 +1,186 @@
+// TigerGraph Investigation GSQL Queries
+// Graph: FraudGraph
+// Core analytical library for Agentic Fraud Investigation
+
+USE GRAPH FraudGraph
+
+// -------------------------------------------------------------
+// 1. GET TRANSACTION
+// -------------------------------------------------------------
+CREATE OR REPLACE QUERY get_transaction(VERTEX<Transaction> txn) FOR GRAPH FraudGraph {
+    Start = {txn};
+    
+    CardOwner = SELECT c FROM Start:s -(PERFORMED_BY:e)-> Card:c;
+    CustomerOwner = SELECT cust FROM CardOwner:c -(OWNED_BY:e)-> Customer:cust;
+    DeviceUsed = SELECT d FROM Start:s -(USED_DEVICE:e)-> DeviceProfile:d;
+    RegionBilled = SELECT r FROM Start:s -(BILLED_IN:e)-> BillingRegion:r;
+    EmailUsed = SELECT em FROM Start:s -(PURCHASER_EMAIL:e)-> EmailDomain:em;
+
+    PRINT Start[Start.txn_id, Start.amount, Start.ts_str, Start.channel, Start.risk_score, Start.product_cd, Start.addr1, Start.addr2];
+    PRINT CardOwner[CardOwner.card_id, CardOwner.issuer_code, CardOwner.card_network, CardOwner.card_type];
+    PRINT CustomerOwner[CustomerOwner.customer_id];
+    PRINT DeviceUsed[DeviceUsed.profile_id, DeviceUsed.device_info, DeviceUsed.os, DeviceUsed.browser, DeviceUsed.screen, DeviceUsed.device_type];
+    PRINT RegionBilled[RegionBilled.region_code, RegionBilled.country_code];
+    PRINT EmailUsed[EmailUsed.domain];
+}
+
+// -------------------------------------------------------------
+// 2. GET CUSTOMER TRANSACTION HISTORY
+// -------------------------------------------------------------
+CREATE OR REPLACE QUERY get_customer_transaction_history(VERTEX<Customer> cust, INT limit_count = 100) FOR GRAPH FraudGraph {
+    Start = {cust};
+    Cards = SELECT c FROM Start:s -(OWNS_CARD:e)-> Card:c;
+    Txns = SELECT t FROM Cards:c -(PERFORMED_TXN:e)-> Transaction:t
+           ORDER BY t.ts DESC
+           LIMIT limit_count;
+    
+    Devices = SELECT d FROM Txns:t -(USED_DEVICE:e)-> DeviceProfile:d;
+
+    PRINT Start[Start.customer_id];
+    PRINT Cards[Cards.card_id, Cards.card_network, Cards.card_type];
+    PRINT Txns[Txns.txn_id, Txns.amount, Txns.ts_str, Txns.channel, Txns.risk_score, Txns.product_cd, Txns.addr1];
+    PRINT Devices[Devices.profile_id, Devices.device_info];
+}
+
+// -------------------------------------------------------------
+// 3. GET CARD TRANSACTION HISTORY
+// -------------------------------------------------------------
+CREATE OR REPLACE QUERY get_card_transaction_history(VERTEX<Card> card_node, INT limit_count = 100) FOR GRAPH FraudGraph {
+    Start = {card_node};
+    Txns = SELECT t FROM Start:s -(PERFORMED_TXN:e)-> Transaction:t
+           ORDER BY t.ts DESC
+           LIMIT limit_count;
+    
+    PRINT Start[Start.card_id, Start.customer_id, Start.issuer_code, Start.card_network, Start.card_type];
+    PRINT Txns[Txns.txn_id, Txns.amount, Txns.ts_str, Txns.channel, Txns.risk_score, Txns.addr1];
+}
+
+// -------------------------------------------------------------
+// 4. GET TRANSACTION NEIGHBORHOOD (For Ego-Graph & UI)
+// -------------------------------------------------------------
+CREATE OR REPLACE QUERY get_transaction_neighborhood(VERTEX<Transaction> txn, INT max_hops = 2) FOR GRAPH FraudGraph {
+    Start = {txn};
+    
+    // 1-Hop: Card, Device, Region, Email
+    Cards = SELECT c FROM Start:s -(PERFORMED_BY:e)-> Card:c;
+    Devices = SELECT d FROM Start:s -(USED_DEVICE:e)-> DeviceProfile:d;
+    Regions = SELECT r FROM Start:s -(BILLED_IN:e)-> BillingRegion:r;
+    Emails = SELECT em FROM Start:s -(PURCHASER_EMAIL:e)-> EmailDomain:em;
+    Cases = SELECT cc FROM Start:s -(INVOLVED_IN_CASE:e)-> ClosedCase:cc;
+
+    // 2-Hop: Customer, Other Cards on same Device
+    Customers = SELECT cust FROM Cards:c -(OWNED_BY:e)-> Customer:cust;
+    SiblingTxns = SELECT t FROM Devices:d -(USED_IN_TXN:e)-> Transaction:t LIMIT 50;
+    SiblingCards = SELECT c FROM SiblingTxns:t -(PERFORMED_BY:e)-> Card:c;
+
+    PRINT Start;
+    PRINT Cards, Customers;
+    PRINT Devices;
+    PRINT Regions, Emails;
+    PRINT Cases;
+    PRINT SiblingCards;
+}
+
+// -------------------------------------------------------------
+// 5. FIND SHARED DEVICES (Syndicate / Ring Detection)
+// -------------------------------------------------------------
+CREATE OR REPLACE QUERY find_shared_devices(VERTEX<DeviceProfile> dev) FOR GRAPH FraudGraph {
+    Start = {dev};
+    Txns = SELECT t FROM Start:s -(USED_IN_TXN:e)-> Transaction:t LIMIT 200;
+    Cards = SELECT c FROM Txns:t -(PERFORMED_BY:e)-> Card:c;
+    Customers = SELECT cust FROM Cards:c -(OWNED_BY:e)-> Customer:cust;
+
+    PRINT Start[Start.profile_id, Start.device_info, Start.os, Start.browser, Start.device_type];
+    PRINT Cards[Cards.card_id, Cards.customer_id];
+    PRINT Customers[Customers.customer_id];
+}
+
+// -------------------------------------------------------------
+// 6. DETECT CARD TESTING SEQUENCE
+// -------------------------------------------------------------
+CREATE OR REPLACE QUERY detect_card_testing(VERTEX<Card> card_node, INT window_hours = 24) FOR GRAPH FraudGraph {
+    Start = {card_node};
+    
+    // Low value authorizations (< $5.00) on online channel
+    MicroTxns = SELECT t FROM Start:s -(PERFORMED_TXN:e)-> Transaction:t
+                WHERE t.channel == "online" AND t.amount <= 5.0
+                ORDER BY t.ts ASC;
+
+    // Followed by larger purchases (> $50.00)
+    LargeTxns = SELECT t FROM Start:s -(PERFORMED_TXN:e)-> Transaction:t
+                WHERE t.amount >= 50.0
+                ORDER BY t.ts ASC;
+
+    PRINT Start[Start.card_id];
+    PRINT MicroTxns[MicroTxns.txn_id, MicroTxns.amount, MicroTxns.ts_str, MicroTxns.risk_score];
+    PRINT LargeTxns[LargeTxns.txn_id, LargeTxns.amount, LargeTxns.ts_str, LargeTxns.risk_score];
+}
+
+// -------------------------------------------------------------
+// 7. DETECT VELOCITY PATTERN
+// -------------------------------------------------------------
+CREATE OR REPLACE QUERY detect_velocity_pattern(VERTEX<Card> card_node, INT limit_count = 50) FOR GRAPH FraudGraph {
+    SumAccum<DOUBLE> @total_amt;
+    SumAccum<INT> @txn_count;
+
+    Start = {card_node};
+    Txns = SELECT t FROM Start:s -(PERFORMED_TXN:e)-> Transaction:t
+           ORDER BY t.ts DESC
+           LIMIT limit_count;
+
+    PRINT Start[Start.card_id];
+    PRINT Txns[Txns.txn_id, Txns.amount, Txns.ts_str, Txns.channel, Txns.risk_score];
+}
+
+// -------------------------------------------------------------
+// 8. DETECT REGIONAL ANOMALY
+// -------------------------------------------------------------
+CREATE OR REPLACE QUERY detect_regional_anomaly(VERTEX<Transaction> txn) FOR GRAPH FraudGraph {
+    Start = {txn};
+    Cards = SELECT c FROM Start:s -(PERFORMED_BY:e)-> Card:c;
+    AllCardTxns = SELECT t FROM Cards:c -(PERFORMED_TXN:e)-> Transaction:t
+                  LIMIT 100;
+    
+    PRINT Start[Start.txn_id, Start.addr1, Start.addr2, Start.channel, Start.ts_str];
+    PRINT AllCardTxns[AllCardTxns.txn_id, AllCardTxns.addr1, AllCardTxns.addr2, AllCardTxns.channel, AllCardTxns.ts_str];
+}
+
+// -------------------------------------------------------------
+// 9. GET HISTORICAL CLOSED CASES (Case Memory Retrieval)
+// -------------------------------------------------------------
+CREATE OR REPLACE QUERY get_historical_cases(VERTEX<Customer> cust, INT top_k = 5) FOR GRAPH FraudGraph {
+    Start = {cust};
+    Cards = SELECT c FROM Start:s -(OWNS_CARD:e)-> Card:c;
+    
+    // Direct cases on customer's cards
+    DirectCases = SELECT cc FROM Cards:c -(HAS_CASE:e)-> ClosedCase:cc;
+    
+    // Connected cases via shared device
+    Txns = SELECT t FROM Cards:c -(PERFORMED_TXN:e)-> Transaction:t;
+    Devs = SELECT d FROM Txns:t -(USED_DEVICE:e)-> DeviceProfile:d;
+    DevTxns = SELECT t FROM Devs:d -(USED_IN_TXN:e)-> Transaction:t;
+    DevCards = SELECT c FROM DevTxns:t -(PERFORMED_BY:e)-> Card:c;
+    ConnectedCases = SELECT cc FROM DevCards:c -(HAS_CASE:e)-> ClosedCase:cc;
+
+    PRINT DirectCases[DirectCases.case_id, DirectCases.customer_id, DirectCases.card_id, DirectCases.outcome, DirectCases.pattern, DirectCases.exposure_usd, DirectCases.analyst_notes];
+    PRINT ConnectedCases[ConnectedCases.case_id, ConnectedCases.customer_id, ConnectedCases.card_id, ConnectedCases.outcome, ConnectedCases.pattern, ConnectedCases.exposure_usd, ConnectedCases.analyst_notes];
+}
+
+// -------------------------------------------------------------
+// 10. FIND CONNECTED CARDS
+// -------------------------------------------------------------
+CREATE OR REPLACE QUERY find_connected_cards(VERTEX<Card> card_node) FOR GRAPH FraudGraph {
+    Start = {card_node};
+    Customers = SELECT cust FROM Start:s -(OWNED_BY:e)-> Customer:cust;
+    CustCards = SELECT c FROM Customers:cust -(OWNS_CARD:e)-> Card:c;
+
+    Txns = SELECT t FROM Start:s -(PERFORMED_TXN:e)-> Transaction:t;
+    Devs = SELECT d FROM Txns:t -(USED_DEVICE:e)-> DeviceProfile:d;
+    DevTxns = SELECT t FROM Devs:d -(USED_IN_TXN:e)-> Transaction:t;
+    DevCards = SELECT c FROM DevTxns:t -(PERFORMED_BY:e)-> Card:c;
+
+    PRINT Start[Start.card_id];
+    PRINT CustCards[CustCards.card_id, CustCards.customer_id];
+    PRINT DevCards[DevCards.card_id, DevCards.customer_id];
+    PRINT Devs[Devs.profile_id, Devs.device_info];
+}

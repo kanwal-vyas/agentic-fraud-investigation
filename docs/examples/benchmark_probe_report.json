@@ -1,0 +1,729 @@
+[
+  {
+    "case_id": "HHG-001",
+    "trigger_type": "risk_score",
+    "flagged_transaction_id": "3514030",
+    "customer_id": "C12382",
+    "card_id": "C12382-K1",
+    "transaction_amount_usd": 77.07,
+    "channel": "in_person",
+    "model_risk_score": 0.61,
+    "historical_cases_count": 3,
+    "historical_case_ids": [
+      "CC-1066",
+      "CC-1673",
+      "CC-2964"
+    ],
+    "is_shared_device": false,
+    "shared_device_profile": "",
+    "connected_cards_count": 0,
+    "connected_cards": [],
+    "is_velocity_spike": true,
+    "is_regional_anomaly": true,
+    "is_card_testing": false,
+    "top_detected_pattern": "out_of_region_use",
+    "pattern_heuristic_confidence": 0.85,
+    "pattern_claims": [
+      "In-person transaction in remote billing region 444.0",
+      "Cardholder historical baseline established in home region 204.0 (18 prior transactions)"
+    ]
+  },
+  {
+    "case_id": "HHG-002",
+    "trigger_type": "risk_score",
+    "flagged_transaction_id": "3478782",
+    "customer_id": "C11891",
+    "card_id": "C11891-K1",
+    "transaction_amount_usd": 292.36,
+    "channel": "online",
+    "model_risk_score": 0.79,
+    "historical_cases_count": 1,
+    "historical_case_ids": [
+      "CC-4160"
+    ],
+    "is_shared_device": false,
+    "shared_device_profile": "",
+    "connected_cards_count": 0,
+    "connected_cards": [],
+    "is_velocity_spike": false,
+    "is_regional_anomaly": false,
+    "is_card_testing": false,
+    "top_detected_pattern": "card_not_present_fraud",
+    "pattern_heuristic_confidence": 0.72,
+    "pattern_claims": [
+      "Burst of online transactions ($292.36) on card C11891-K1",
+      "Model input risk score: 0.79"
+    ]
+  },
+  {
+    "case_id": "HHG-003",
+    "trigger_type": "customer_report",
+    "flagged_transaction_id": "3530164",
+    "customer_id": "C08623",
+    "card_id": "C08623-K2",
+    "transaction_amount_usd": 49.0,
+    "channel": "in_person",
+    "model_risk_score": 0.4,
+    "historical_cases_count": 3,
+    "historical_case_ids": [
+      "CC-1589",
+      "CC-2817",
+      "CC-2935"
+    ],
+    "is_shared_device": false,
+    "shared_device_profile": "",
+    "connected_cards_count": 12,
+    "connected_cards": [
+      "C08623-K1",
+      "C02354-K1",
+      "C11464-K1",
+      "C09933-K1",
+      "C08945-K1",
+      "C11227-K1",
+      "C07987-K1",
+      "C05876-K1",
+      "C03575-K1",
+      "C06208-K1",
+      "C04570-K1",
+      "C13440-K1"
+    ],
+    "is_velocity_spike": true,
+    "is_regional_anomaly": true,
+    "is_card_testing": false,
+    "top_detected_pattern": "out_of_region_use",
+    "pattern_heuristic_confidence": 0.85,
+    "pattern_claims": [
+      "In-person transaction in remote billing region 330.0",
+      "Cardholder historical baseline established in home region 158.0 (3 prior transactions)"
+    ]
+  },
+  {
+    "case_id": "HHG-004",
+    "trigger_type": "customer_report",
+    "flagged_transaction_id": "3583227",
+    "customer_id": "C08106",
+    "card_id": "C08106-K1",
+    "transaction_amount_usd": 128.33,
+    "channel": "online",
+    "model_risk_score": 0.34,
+    "historical_cases_count": 3,
+    "historical_case_ids": [
+      "CC-0696",
+      "CC-1736",
+      "CC-2121"
+    ],
+    "is_shared_device": false,
+    "shared_device_profile": "",
+    "connected_cards_count": 0,
+    "connected_cards": [],
+    "is_velocity_spike": false,
+    "is_regional_anomaly": false,
+    "is_card_testing": false,
+    "top_detected_pattern": "card_not_present_fraud",
+    "pattern_heuristic_confidence": 0.72,
+    "pattern_claims": [
+      "Burst of online transactions ($128.33) on card C08106-K1",
+      "Model input risk score: 0.34"
+    ]
+  },
+  {
+    "case_id": "HHG-005",
+    "trigger_type": "risk_score",
+    "flagged_transaction_id": "3523199",
+    "customer_id": "C02923",
+    "card_id": "C02923-K1",
+    "transaction_amount_usd": 100.07,
+    "channel": "online",
+    "model_risk_score": 0.54,
+    "historical_cases_count": 3,
+    "historical_case_ids": [
+      "CC-2400",
+      "CC-2717",
+      "CC-2857"
+    ],
+    "is_shared_device": true,
+    "shared_device_profile": "iOS Device | iOS 9.3.5 | mobile safari 9.0 | 1024x768",
+    "connected_cards_count": 14,
+    "connected_cards": [
+      "C02354-K1",
+      "C08299-K1",
+      "C07987-K1",
+      "C13440-K1",
+      "C06208-K1",
+      "C03575-K1",
+      "C07847-K1",
+      "C12267-K1",
+      "C11227-K1",
+      "C09998-K1",
+      "C09933-K1",
+      "C06403-K1",
+      "C08945-K1",
+      "C05876-K1"
+    ],
+    "is_velocity_spike": true,
+    "is_regional_anomaly": false,
+    "is_card_testing": false,
+    "top_detected_pattern": "undocumented",
+    "pattern_heuristic_confidence": 0.88,
+    "pattern_claims": [
+      "Device profile iOS Device | iOS 9.3.5 | mobile safari 9.0 | 1024x768 is shared across 9 distinct cards",
+      "Connected customers: C02354, C08299, C07987, C13440, C06208, C03575, C07847, C02923, C12267"
+    ]
+  },
+  {
+    "case_id": "HHG-006",
+    "trigger_type": "customer_report",
+    "flagged_transaction_id": "3476682",
+    "customer_id": "C07297",
+    "card_id": "C07297-K1",
+    "transaction_amount_usd": 482.12,
+    "channel": "online",
+    "model_risk_score": 0.25,
+    "historical_cases_count": 3,
+    "historical_case_ids": [
+      "CC-0008",
+      "CC-0013",
+      "CC-0020"
+    ],
+    "is_shared_device": true,
+    "shared_device_profile": "Trident/7.0 | Windows 7 | ie 11.0 for desktop | 1920x1080",
+    "connected_cards_count": 0,
+    "connected_cards": [],
+    "is_velocity_spike": true,
+    "is_regional_anomaly": false,
+    "is_card_testing": false,
+    "top_detected_pattern": "undocumented",
+    "pattern_heuristic_confidence": 0.88,
+    "pattern_claims": [
+      "Device profile Trident/7.0 | Windows 7 | ie 11.0 for desktop | 1920x1080 is shared across 9 distinct cards",
+      "Connected customers: C07987, C02354, C07297, C08945, C11227, C12267, C09933, C06208, C06800"
+    ]
+  },
+  {
+    "case_id": "HHG-007",
+    "trigger_type": "risk_score",
+    "flagged_transaction_id": "3514948",
+    "customer_id": "C09933",
+    "card_id": "C09933-K2",
+    "transaction_amount_usd": 111.92,
+    "channel": "in_person",
+    "model_risk_score": 0.87,
+    "historical_cases_count": 3,
+    "historical_case_ids": [
+      "CC-0104",
+      "CC-0657",
+      "CC-0765"
+    ],
+    "is_shared_device": false,
+    "shared_device_profile": "",
+    "connected_cards_count": 4,
+    "connected_cards": [
+      "C09933-K1",
+      "C02354-K1",
+      "C08945-K1",
+      "C10434-K1"
+    ],
+    "is_velocity_spike": true,
+    "is_regional_anomaly": false,
+    "is_card_testing": false,
+    "top_detected_pattern": "none",
+    "pattern_heuristic_confidence": 0.9,
+    "pattern_claims": [
+      "Transaction consistent with cardholder normal spending profile",
+      "Billing region 264.0 matches established home baseline"
+    ]
+  },
+  {
+    "case_id": "HHG-008",
+    "trigger_type": "customer_report",
+    "flagged_transaction_id": "3558054",
+    "customer_id": "C13171",
+    "card_id": "C13171-K2",
+    "transaction_amount_usd": 55.68,
+    "channel": "online",
+    "model_risk_score": 0.38,
+    "historical_cases_count": 3,
+    "historical_case_ids": [
+      "CC-0056",
+      "CC-0467",
+      "CC-0772"
+    ],
+    "is_shared_device": true,
+    "shared_device_profile": "UnknownDevice | UnknownOS | chrome 66.0 | UnknownScreen",
+    "connected_cards_count": 1,
+    "connected_cards": [
+      "C13171-K1"
+    ],
+    "is_velocity_spike": false,
+    "is_regional_anomaly": false,
+    "is_card_testing": false,
+    "top_detected_pattern": "none",
+    "pattern_heuristic_confidence": 0.9,
+    "pattern_claims": [
+      "Transaction consistent with cardholder normal spending profile",
+      "Billing region  matches established home baseline"
+    ]
+  },
+  {
+    "case_id": "HHG-009",
+    "trigger_type": "customer_report",
+    "flagged_transaction_id": "3581141",
+    "customer_id": "C08299",
+    "card_id": "C08299-K1",
+    "transaction_amount_usd": 30.02,
+    "channel": "online",
+    "model_risk_score": 0.28,
+    "historical_cases_count": 3,
+    "historical_case_ids": [
+      "CC-0008",
+      "CC-0013",
+      "CC-0020"
+    ],
+    "is_shared_device": true,
+    "shared_device_profile": "UnknownDevice | UnknownOS | UnknownBrowser | UnknownScreen",
+    "connected_cards_count": 21,
+    "connected_cards": [
+      "C02354-K1",
+      "C06208-K1",
+      "C04570-K1",
+      "C09933-K1",
+      "C12267-K1",
+      "C07987-K1",
+      "C13440-K1",
+      "C03575-K1",
+      "C07847-K1",
+      "C02923-K1",
+      "C08945-K1",
+      "C11082-K1",
+      "C02354-K2",
+      "C11227-K1",
+      "C03042-K1",
+      "C03651-K1",
+      "C05876-K1",
+      "C11464-K1",
+      "C07671-K1",
+      "C10434-K1",
+      "C08962-K1"
+    ],
+    "is_velocity_spike": false,
+    "is_regional_anomaly": false,
+    "is_card_testing": false,
+    "top_detected_pattern": "none",
+    "pattern_heuristic_confidence": 0.9,
+    "pattern_claims": [
+      "Transaction consistent with cardholder normal spending profile",
+      "Billing region 203.0 matches established home baseline"
+    ]
+  },
+  {
+    "case_id": "HHG-010",
+    "trigger_type": "risk_score",
+    "flagged_transaction_id": "3506725",
+    "customer_id": "C10434",
+    "card_id": "C10434-K1",
+    "transaction_amount_usd": 1000.03,
+    "channel": "online",
+    "model_risk_score": 0.9,
+    "historical_cases_count": 1,
+    "historical_case_ids": [
+      "CC-0873"
+    ],
+    "is_shared_device": true,
+    "shared_device_profile": "Windows | Windows 10 | edge 16.0 | 1366x768",
+    "connected_cards_count": 24,
+    "connected_cards": [
+      "C07987-K1",
+      "C06208-K1",
+      "C03528-K1",
+      "C02354-K1",
+      "C03042-K1",
+      "C08945-K1",
+      "C09933-K1",
+      "C09933-K2",
+      "C11464-K1",
+      "C11227-K1",
+      "C12311-K1",
+      "C03277-K1",
+      "C03575-K1",
+      "C12267-K1",
+      "C07847-K1",
+      "C08623-K1",
+      "C07671-K1",
+      "C08299-K1",
+      "C08962-K1",
+      "C05876-K1",
+      "C13440-K1",
+      "C03651-K1",
+      "C06059-K1",
+      "C12265-K1"
+    ],
+    "is_velocity_spike": true,
+    "is_regional_anomaly": false,
+    "is_card_testing": false,
+    "top_detected_pattern": "undocumented",
+    "pattern_heuristic_confidence": 0.88,
+    "pattern_claims": [
+      "Device profile Windows | Windows 10 | edge 16.0 | 1366x768 is shared across 5 distinct cards",
+      "Connected customers: C07987, C06208, C03528, C02354, C10434"
+    ]
+  },
+  {
+    "case_id": "HHG-011",
+    "trigger_type": "customer_report",
+    "flagged_transaction_id": "3583368",
+    "customer_id": "C11923",
+    "card_id": "C11923-K2",
+    "transaction_amount_usd": 131.3,
+    "channel": "online",
+    "model_risk_score": 0.39,
+    "historical_cases_count": 3,
+    "historical_case_ids": [
+      "CC-0031",
+      "CC-0290",
+      "CC-1056"
+    ],
+    "is_shared_device": false,
+    "shared_device_profile": "",
+    "connected_cards_count": 1,
+    "connected_cards": [
+      "C11923-K1"
+    ],
+    "is_velocity_spike": false,
+    "is_regional_anomaly": false,
+    "is_card_testing": false,
+    "top_detected_pattern": "card_not_present_fraud",
+    "pattern_heuristic_confidence": 0.72,
+    "pattern_claims": [
+      "Burst of online transactions ($131.30) on card C11923-K2",
+      "Model input risk score: 0.39"
+    ]
+  },
+  {
+    "case_id": "HHG-012",
+    "trigger_type": "risk_score",
+    "flagged_transaction_id": "3553342",
+    "customer_id": "C05876",
+    "card_id": "C05876-K2",
+    "transaction_amount_usd": 30.91,
+    "channel": "in_person",
+    "model_risk_score": 0.55,
+    "historical_cases_count": 2,
+    "historical_case_ids": [
+      "CC-0003",
+      "CC-2370"
+    ],
+    "is_shared_device": false,
+    "shared_device_profile": "",
+    "connected_cards_count": 1,
+    "connected_cards": [
+      "C05876-K1"
+    ],
+    "is_velocity_spike": true,
+    "is_regional_anomaly": false,
+    "is_card_testing": false,
+    "top_detected_pattern": "none",
+    "pattern_heuristic_confidence": 0.9,
+    "pattern_claims": [
+      "Transaction consistent with cardholder normal spending profile",
+      "Billing region 494.0 matches established home baseline"
+    ]
+  },
+  {
+    "case_id": "HHG-013",
+    "trigger_type": "risk_score",
+    "flagged_transaction_id": "3526826",
+    "customer_id": "C07671",
+    "card_id": "C07671-K2",
+    "transaction_amount_usd": 35.66,
+    "channel": "online",
+    "model_risk_score": 0.76,
+    "historical_cases_count": 3,
+    "historical_case_ids": [
+      "CC-1475",
+      "CC-3216",
+      "CC-3761"
+    ],
+    "is_shared_device": true,
+    "shared_device_profile": "Windows | UnknownOS | chrome 66.0 | UnknownScreen",
+    "connected_cards_count": 2,
+    "connected_cards": [
+      "C07671-K1",
+      "C11227-K1"
+    ],
+    "is_velocity_spike": true,
+    "is_regional_anomaly": false,
+    "is_card_testing": false,
+    "top_detected_pattern": "none",
+    "pattern_heuristic_confidence": 0.9,
+    "pattern_claims": [
+      "Transaction consistent with cardholder normal spending profile",
+      "Billing region  matches established home baseline"
+    ]
+  },
+  {
+    "case_id": "HHG-014",
+    "trigger_type": "analyst_request",
+    "flagged_transaction_id": "3478561",
+    "customer_id": "C13487",
+    "card_id": "C13487-K1",
+    "transaction_amount_usd": 74.96,
+    "channel": "online",
+    "model_risk_score": 0.05,
+    "historical_cases_count": 3,
+    "historical_case_ids": [
+      "CC-0008",
+      "CC-0013",
+      "CC-0020"
+    ],
+    "is_shared_device": true,
+    "shared_device_profile": "SM-G935F Build/NRD90M | Android 7.0 | chrome 62.0 for android | 1920x1080",
+    "connected_cards_count": 12,
+    "connected_cards": [
+      "C06617-K1",
+      "C03528-K1",
+      "C09998-K1",
+      "C09733-K1",
+      "C11082-K1",
+      "C09933-K1",
+      "C11464-K1",
+      "C07987-K1",
+      "C06208-K1",
+      "C12267-K1",
+      "C03575-K1",
+      "C11227-K1"
+    ],
+    "is_velocity_spike": false,
+    "is_regional_anomaly": false,
+    "is_card_testing": false,
+    "top_detected_pattern": "undocumented",
+    "pattern_heuristic_confidence": 0.88,
+    "pattern_claims": [
+      "Device profile SM-G935F Build/NRD90M | Android 7.0 | chrome 62.0 for android | 1920x1080 is shared across 6 distinct cards",
+      "Connected customers: C06617, C03528, C09998, C09733, C13487, C11082"
+    ]
+  },
+  {
+    "case_id": "HHG-015",
+    "trigger_type": "risk_score",
+    "flagged_transaction_id": "3464869",
+    "customer_id": "C03042",
+    "card_id": "C03042-K1",
+    "transaction_amount_usd": 599.94,
+    "channel": "online",
+    "model_risk_score": 0.77,
+    "historical_cases_count": 3,
+    "historical_case_ids": [
+      "CC-0615",
+      "CC-1313",
+      "CC-3886"
+    ],
+    "is_shared_device": true,
+    "shared_device_profile": "Trident/7.0 | Windows 8.1 | ie 11.0 for desktop | 1680x1050",
+    "connected_cards_count": 18,
+    "connected_cards": [
+      "C08945-K1",
+      "C09933-K1",
+      "C02354-K1",
+      "C03575-K1",
+      "C12267-K1",
+      "C08623-K1",
+      "C10434-K1",
+      "C11227-K1",
+      "C11464-K1",
+      "C13440-K1",
+      "C06208-K1",
+      "C05876-K1",
+      "C03277-K1",
+      "C08299-K1",
+      "C07987-K1",
+      "C06059-K1",
+      "C07297-K1",
+      "C04570-K1"
+    ],
+    "is_velocity_spike": true,
+    "is_regional_anomaly": false,
+    "is_card_testing": false,
+    "top_detected_pattern": "undocumented",
+    "pattern_heuristic_confidence": 0.88,
+    "pattern_claims": [
+      "Device profile Trident/7.0 | Windows 8.1 | ie 11.0 for desktop | 1680x1050 is shared across 2 distinct cards",
+      "Connected customers: C11227, C03042"
+    ]
+  },
+  {
+    "case_id": "HHG-016",
+    "trigger_type": "customer_report",
+    "flagged_transaction_id": "3534820",
+    "customer_id": "C09988",
+    "card_id": "C09988-K1",
+    "transaction_amount_usd": 59.67,
+    "channel": "online",
+    "model_risk_score": 0.37,
+    "historical_cases_count": 3,
+    "historical_case_ids": [
+      "CC-0008",
+      "CC-0013",
+      "CC-0020"
+    ],
+    "is_shared_device": true,
+    "shared_device_profile": "Windows | UnknownOS | edge 16.0 | UnknownScreen",
+    "connected_cards_count": 0,
+    "connected_cards": [],
+    "is_velocity_spike": false,
+    "is_regional_anomaly": false,
+    "is_card_testing": false,
+    "top_detected_pattern": "none",
+    "pattern_heuristic_confidence": 0.9,
+    "pattern_claims": [
+      "Transaction consistent with cardholder normal spending profile",
+      "Billing region  matches established home baseline"
+    ]
+  },
+  {
+    "case_id": "HHG-017",
+    "trigger_type": "risk_score",
+    "flagged_transaction_id": "3450629",
+    "customer_id": "C04570",
+    "card_id": "C04570-K1",
+    "transaction_amount_usd": 100.09,
+    "channel": "online",
+    "model_risk_score": 0.57,
+    "historical_cases_count": 1,
+    "historical_case_ids": [
+      "CC-1383"
+    ],
+    "is_shared_device": true,
+    "shared_device_profile": "Windows | Windows 10 | chrome 65.0 | 1920x1080",
+    "connected_cards_count": 19,
+    "connected_cards": [
+      "C11227-K1",
+      "C02354-K1",
+      "C07987-K1",
+      "C07847-K1",
+      "C03575-K1",
+      "C06208-K1",
+      "C13440-K1",
+      "C11464-K1",
+      "C09933-K1",
+      "C12267-K1",
+      "C05876-K1",
+      "C08945-K1",
+      "C03042-K1",
+      "C03651-K1",
+      "C08299-K1",
+      "C06059-K1",
+      "C07297-K1",
+      "C08623-K2",
+      "C08623-K1"
+    ],
+    "is_velocity_spike": true,
+    "is_regional_anomaly": false,
+    "is_card_testing": false,
+    "top_detected_pattern": "undocumented",
+    "pattern_heuristic_confidence": 0.88,
+    "pattern_claims": [
+      "Device profile Windows | Windows 10 | chrome 65.0 | 1920x1080 is shared across 13 distinct cards",
+      "Connected customers: C04570, C07987, C07847, C02354, C03575, C06208, C11227, C13440, C11464, C09933, C12267, C05876, C08945"
+    ]
+  },
+  {
+    "case_id": "HHG-018",
+    "trigger_type": "customer_report",
+    "flagged_transaction_id": "3491361",
+    "customer_id": "C02354",
+    "card_id": "C02354-K2",
+    "transaction_amount_usd": 39.08,
+    "channel": "in_person",
+    "model_risk_score": 0.48,
+    "historical_cases_count": 3,
+    "historical_case_ids": [
+      "CC-0255",
+      "CC-0405",
+      "CC-0454"
+    ],
+    "is_shared_device": false,
+    "shared_device_profile": "",
+    "connected_cards_count": 1,
+    "connected_cards": [
+      "C02354-K1"
+    ],
+    "is_velocity_spike": true,
+    "is_regional_anomaly": true,
+    "is_card_testing": false,
+    "top_detected_pattern": "out_of_region_use",
+    "pattern_heuristic_confidence": 0.85,
+    "pattern_claims": [
+      "In-person transaction in remote billing region 126.0",
+      "Cardholder historical baseline established in home region 325.0 (84 prior transactions)"
+    ]
+  },
+  {
+    "case_id": "HHG-019",
+    "trigger_type": "risk_score",
+    "flagged_transaction_id": "3503878",
+    "customer_id": "C07987",
+    "card_id": "C07987-K2",
+    "transaction_amount_usd": 99.92,
+    "channel": "online",
+    "model_risk_score": 0.9,
+    "historical_cases_count": 3,
+    "historical_case_ids": [
+      "CC-2011",
+      "CC-2087",
+      "CC-2860"
+    ],
+    "is_shared_device": false,
+    "shared_device_profile": "",
+    "connected_cards_count": 3,
+    "connected_cards": [
+      "C07987-K1",
+      "C11227-K1",
+      "C02354-K1"
+    ],
+    "is_velocity_spike": true,
+    "is_regional_anomaly": false,
+    "is_card_testing": false,
+    "top_detected_pattern": "card_not_present_new_device",
+    "pattern_heuristic_confidence": 0.78,
+    "pattern_claims": [
+      "Online transaction from previously unseen device profile (Windows | other | chrome 61.0 | 1280x720)",
+      "Transaction amount $99.92 online under product code R"
+    ]
+  },
+  {
+    "case_id": "HHG-020",
+    "trigger_type": "risk_score",
+    "flagged_transaction_id": "3509359",
+    "customer_id": "C12265",
+    "card_id": "C12265-K2",
+    "transaction_amount_usd": 125.08,
+    "channel": "online",
+    "model_risk_score": 0.52,
+    "historical_cases_count": 2,
+    "historical_case_ids": [
+      "CC-2277",
+      "CC-2447"
+    ],
+    "is_shared_device": true,
+    "shared_device_profile": "Trident/7.0 | Windows 10 | ie 11.0 for desktop | 1920x1080",
+    "connected_cards_count": 7,
+    "connected_cards": [
+      "C12265-K1",
+      "C02354-K1",
+      "C11227-K1",
+      "C13440-K1",
+      "C02923-K1",
+      "C03575-K1",
+      "C06208-K1"
+    ],
+    "is_velocity_spike": false,
+    "is_regional_anomaly": false,
+    "is_card_testing": false,
+    "top_detected_pattern": "undocumented",
+    "pattern_heuristic_confidence": 0.88,
+    "pattern_claims": [
+      "Device profile Trident/7.0 | Windows 10 | ie 11.0 for desktop | 1920x1080 is shared across 7 distinct cards",
+      "Connected customers: C02354, C11227, C13440, C02923, C03575, C12265, C06208"
+    ]
+  }
+]

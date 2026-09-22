@@ -28,14 +28,31 @@ graph TD
     Trigger[Trigger Event / Case Pack] --> Backend[FastAPI Backend]
     Backend --> Agent[Agentic State Machine]
     Agent <--> TG_MCP[TigerGraph MCP Server]
-    TG_MCP <--> TG[(TigerGraph Database)]
+    TG_MCP <--> Tools[TigerGraph Investigation Tools Layer]
+    Tools <--> GSQL[Pre-compiled GSQL Queries]
+    GSQL <--> TG[(TigerGraph Native Database)]
     Agent <--> GraphRAG[GraphRAG & Case Memory Engine]
-    GraphRAG <--> VectorDB[(Vector & Historical Store)]
+    GraphRAG <--> ClosedCases[(Historical Case Memory Store)]
     Agent --> Policy[Deterministic Policy Engine]
     Agent --> MemoryWriter[Graph Case Persistence]
     MemoryWriter --> TG
     Agent <--> LLM[LLM Reasoning & Synthesis]
     Backend <--> UI[React / Vite Analyst Dashboard]
+```
+
+### Layered Query Execution Pipeline:
+```
+Agent (LLM Reasoning & State Machine)
+  ↓
+TigerGraph MCP Server (Tool Dispatcher)
+  ↓
+Python Investigation Tools Layer (TigerGraphInvestigationTools)
+  ↓
+Pre-compiled GSQL Query Library (investigation_queries.gsql)
+  ↓
+TigerGraph Graph Engine (Vertices, Edges, Neighborhood Traversals)
+  ↓
+Structured Evidence Models (TransactionDetail, SharedDeviceEvidence, etc.)
 ```
 
 - **Agent ↔ TigerGraph:** Through TigerGraph MCP standard tool protocol (JSON-RPC over stdio/HTTP or direct pyTigerGraph MCP wrapper).

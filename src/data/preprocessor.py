@@ -129,6 +129,9 @@ def preprocess_subdataset(
             card_records[card_id] = {
                 "card_id": card_id,
                 "customer_id": cust_id,
+                "issuer_code": int(r["card1"]),
+                "card_network": str(r["card4"]) if pd.notna(r["card4"]) else "unknown",
+                "card_type": str(r["card6"]) if pd.notna(r["card6"]) else "unknown",
                 "card1": int(r["card1"]),
                 "card4": str(r["card4"]) if pd.notna(r["card4"]) else "unknown",
                 "card6": str(r["card6"]) if pd.notna(r["card6"]) else "unknown",
