@@ -147,7 +147,17 @@ graph TD
 
 ---
 
-## 9. UI & Agent Communication
+## 9. Agentic Fraud Investigation Orchestrator (Stage 7)
+The orchestrator drives the end-to-end autonomous investigation lifecycle:
+- **Dynamic Tool Selection**: Inspects trigger types (`risk_score`, `customer_report`, `analyst_request`) and active working memory gaps to dynamically invoke TigerGraph MCP tools without hardcoded static sequences.
+- **Working Memory (`WorkingInvestigationState`)**: Tracks tools called, collected multi-dimensional evidence, active gaps, and reasoning checkpoints.
+- **Reasoning Checkpoints**: Evaluates intermediate hypotheses after each step to reflect cognitive progression in UI and audit logs.
+- **Controlled Reassessment Loop**: Seamlessly transitions case verdicts upon receiving additional simulated or real customer evidence.
+- **Policy Guardrails & Execution Separation**: Enforces bank rules R1–R10 deterministically, holding all destructive actions in a `RECOMMENDED` status pending formal human approval (`auto`, `L1`, `L2`).
+
+---
+
+## 10. UI & Agent Communication
 - The React UI connects to FastAPI via REST and Server-Sent Events (SSE).
 - The analyst can:
   - Select any of the 20 benchmark cases or ingest real-time transactions.
