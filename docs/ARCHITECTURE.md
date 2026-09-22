@@ -114,14 +114,36 @@ The agent is a **hybrid deterministic state machine and LLM reasoning engine**:
 
 ---
 
-## 8. Deterministic Policy Enforcement
-Policy is decoupled from raw LLM output:
-1. The agent proposes a candidate action and estimated probability.
-2. The **Policy Engine** evaluates the facts against Rules R1–R10:
-   - Verifies if probability < 0.70 with single signal requires `VERIFY_WITH_CUSTOMER` (R1).
-   - Validates if `FILE_REPORT` criteria are met (exposure > $1,000, shared origin R6, or undocumented R9).
-   - Automatically assigns the strict approval route (`auto`, `L1`, `L2`).
-3. If an action requires approval, the system flags it as pending human approval, allowing simulated or analyst authorization.
+## 8. Reasoning, Uncertainty & Action Policy Engine (Stage 6)
+The reasoning system decouples investigation assessment, uncertainty modeling, policy evaluation, and action execution:
+
+```mermaid
+graph TD
+    Trigger[Incoming Trigger / Case] --> TGContext[TigerGraph + GraphRAG Context]
+    TGContext --> EvEval[Evidence Evaluator: 6 Dimensions]
+    TGContext --> UncEval[Uncertainty Evaluator: Materiality & Gaps]
+    EvEval & UncEval --> SuffEval{Evidence Sufficiency?}
+    
+    SuffEval -->|Insufficient / Conflicting| PlanEv[Controlled Evidence Planner]
+    PlanEv --> InfoGain[Information Gain Ranking]
+    InfoGain --> Reassess[Reassessment Pipeline]
+    Reassess --> EvEval
+    
+    SuffEval -->|Sufficient| PolicyEng[Policy Decision Engine: Rules R1-R10]
+    PolicyEng --> NBAEng[Next Best Action Engine]
+    NBAEng --> DecSep[Recommendation vs Execution Separation]
+    DecSep --> StopEval[Stop Condition Evaluator]
+    StopEval --> ExplEng[5-Part Structured Explanation Engine]
+```
+
+### Key Subsystems:
+1. **6-Dimensional Evidence Assessment**: Direct transaction, Behavioral baseline, Network graph, Historical precedent, Policy constraints, and Contradictory evidence.
+2. **Uncertainty & Evidence Sufficiency**: Computes distinct uncertainty metrics (`low`, `moderate`, `material`, `high`) and sufficiency states (`sufficient`, `insufficient`, `conflicting`).
+3. **Controlled Evidence Planning & Information Gain**: Generates prioritized `EvidenceRequest` items (e.g., customer verification, secondary card check) ranked by uncertainty reduction potential.
+4. **Policy Enforcement Engine**: Strictly evaluates Rules R1–R10, mandatory escalation triggers, exposure thresholds, and blocking safeguards (Rule R10).
+5. **Recommendation vs. Execution Boundary**: All emitted actions remain non-executed (`execution_status = "recommended"`) until formally authorized by the assigned approval tier (`auto`, `L1`, `L2`).
+6. **5-Part Structured Explanations**: Produces fully auditable explanations detailing *Why Suspicious*, *Why Not Certain*, *Why Request More Evidence*, *Why Action*, and *Why Stop*.
+
 
 ---
 
