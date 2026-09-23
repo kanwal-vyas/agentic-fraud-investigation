@@ -11,6 +11,7 @@ from src.agent.orchestrator import AgenticFraudInvestigator
 from src.mcp.server import TigerGraphMCPServer
 from src.rag.synthesis import InvestigationContextSynthesizer
 from src.reasoning.engine import DeterministicReasoningEngine
+from src.models.case_memory import CaseLifecycleStatus, ActionExecutionStatus
 
 def run_benchmark():
     case_pack_path = os.path.join("data", "sample", "case_pack.csv")
@@ -19,13 +20,11 @@ def run_benchmark():
 
     df_cases = pd.read_csv(case_pack_path)
     
-    # Select 12 representative benchmark cases covering all modalities
-    target_case_ids = [
-        "HHG-001", "HHG-002", "HHG-003", "HHG-004", "HHG-005",
-        "HHG-006", "HHG-007", "HHG-010", "HHG-014", "HHG-015",
-        "HHG-017", "HHG-018"
-    ]
-    benchmark_df = df_cases[df_cases["case_id"].isin(target_case_ids)].copy()
+    # Run all 20 benchmark cases (HHG-001 through HHG-020)
+    all_target_case_ids = [f"HHG-{i:03d}" for i in range(1, 21)]
+    benchmark_df = df_cases[df_cases["case_id"].isin(all_target_case_ids)].copy()
+    if benchmark_df.empty:
+        benchmark_df = df_cases.copy()
 
     # Initialize Orchestrator components
     mcp_server = TigerGraphMCPServer()
@@ -47,10 +46,10 @@ def run_benchmark():
     policy_conflicts = 0
     unsupported_actions = 0
 
-    print("=" * 80)
-    print("STAGE 7: AGENTIC FRAUD INVESTIGATION ORCHESTRATOR BENCHMARK EVALUATION")
-    print(f"Running {len(benchmark_df)} benchmark cases across multiple trigger modalities...")
-    print("=" * 80)
+    print("=" * 100)
+    print("STAGE 8: AGENTIC FRAUD INVESTIGATION - CASE MEMORY, PERSISTENCE & GRAPH WRITEBACK BENCHMARK")
+    print(f"Running full suite of {len(benchmark_df)} benchmark cases across all trigger modalities...")
+    print("=" * 100)
 
     for _, row in benchmark_df.iterrows():
         case_id = str(row["case_id"])
@@ -102,52 +101,85 @@ def run_benchmark():
         if res.evidence_requests:
             evidence_requested_count += 1
 
-        # Check for policy compliance or unsupported actions
         if not res.next_best_action.policy_references:
             unsupported_actions += 1
 
-        # Print structured case breakdown
-        print(f"\n==================================================")
-        print(f"CASE ID: {res.case_id} ({customer_id} | {card_id} | Txn {txn_id})")
-        print(f"==================================================")
-        print(f"TRIGGER: [{res.trigger.trigger_type.value.upper()}] {res.trigger.trigger_details}")
-        print(f"TOOLS CALLED ({len(res.investigation_steps)} steps):")
-        for step in res.investigation_steps:
-            print(f"  Step {step.step_number} [{step.tool}]: {step.reason}")
-            print(f"    -> Summary: {step.result_summary}")
+    # Stage 8 Detailed Case Memory & Writeback Audit for HHG-003 and HHG-010
+    print("\n" + "=" * 100)
+    print("STAGE 8 AUDIT: DETAILED CASE MEMORY, LIFECYCLE & WRITEBACK TRACE")
+    print("=" * 100)
 
-        print(f"EVIDENCE FOUND:")
-        for ev in res.final_assessment.supporting_evidence[:2]:
-            print(f"  + [Supporting]: {ev}")
-        for ev in res.final_assessment.contradictory_evidence[:2]:
-            print(f"  - [Benign Signal]: {ev}")
+    for audit_case_id in ["HHG-003", "HHG-010"]:
+        stored_case = investigator.case_store.get_case(audit_case_id)
+        if not stored_case:
+            continue
 
-        print(f"ASSESSMENT CHECKPOINTS: {len(res.assessment_history)} evaluated")
-        for idx, chk in enumerate(res.assessment_history, 1):
-            print(f"  Checkpoint {idx}: Verdict={chk.fraud_assessment.value} | Confidence={chk.confidence:.2f} | Uncertainty={chk.uncertainty.level.value}")
-
-        print(f"UNCERTAINTY: {res.final_assessment.uncertainty.level.value.upper()}")
-        for r in res.final_assessment.uncertainty.reasons[:2]:
-            print(f"  - Reason: {r}")
-
-        print(f"EVIDENCE GAPS: {', '.join(res.final_assessment.evidence_gaps) if res.final_assessment.evidence_gaps else 'None'}")
+        print(f"\n" + "-" * 80)
+        print(f"CASE MEMORY AUDIT: {audit_case_id} ({stored_case.customer_id} | {stored_case.card_id} | Txn {stored_case.triggering_txn_id})")
+        print("-" * 80)
+        print(f"1. TRIGGER [CURRENT]:")
+        print(f"   - Type: {stored_case.trigger_type.upper()}")
+        print(f"   - Created At: {stored_case.created_at}")
+        print(f"   - Initial Status: OPEN")
         
-        if res.evidence_requests:
-            print(f"EVIDENCE REQUESTS:")
-            for req in res.evidence_requests:
-                print(f"  -> [{req.request_type.upper()}] {req.reason} (Info Gain: {req.expected_information_gain:.2f})")
+        print(f"2. CASE CREATED & PERSISTENCE [CURRENT]:")
+        print(f"   - Case Store Record: ID={stored_case.case_id}, Status={stored_case.status.value}")
+        print(f"   - Primary Customer: {stored_case.customer_id}, Primary Card: {stored_case.card_id}")
 
-        print(f"POLICY DECISION:")
-        for pol in res.policy_decisions:
-            print(f"  Rules Evaluated: {', '.join(pol.get('rules_evaluated', []))} | Permitted: {pol.get('permitted')} | Route: {pol.get('approval_route')}")
+        print(f"3. INVESTIGATION EVIDENCE [CURRENT]:")
+        for idx, ev in enumerate(stored_case.evidence_items[:3], 1):
+            print(f"   - Ev #{idx} [{ev.source_type.upper()} | {ev.source_id}]: {ev.statement}")
 
-        print(f"NEXT BEST ACTION: {res.next_best_action.action.value.upper()}")
-        print(f"  Rationale: {res.next_best_action.rationale}")
-        print(f"  Execution Status: {res.execution_status.upper()} (Approval Required: {res.approval_required}, Route: Level {res.approval_route.value})")
+        print(f"4. FINDINGS & ASSESSMENT [CURRENT]:")
+        print(f"   - Fraud Assessment: {stored_case.fraud_assessment.upper()} (Confidence: {stored_case.confidence:.2f})")
+        print(f"   - Uncertainty Level: {stored_case.uncertainty_level.upper()}")
+        print(f"   - Identified Patterns: {', '.join(stored_case.fraud_patterns_identified) if stored_case.fraud_patterns_identified else 'none'}")
+        for sf in stored_case.supporting_findings[:2]:
+            print(f"   + [Supporting Finding]: {sf}")
+        for cf in stored_case.contradictory_findings[:2]:
+            print(f"   - [Contradictory Finding]: {cf}")
 
-        print(f"STOP REASON: [{res.stop_decision.should_stop}] {res.stop_decision.reason}")
+        print(f"5. POLICY EVALUATION [CURRENT]:")
+        print(f"   - Rules Evaluated: {', '.join(stored_case.policy_rules_evaluated)}")
+        print(f"   - Permitted: {stored_case.policy_decision.permitted}")
+        print(f"   - Approval Required: {stored_case.policy_decision.approval_required} (Route: {stored_case.policy_decision.approval_route})")
 
-    # Aggregate Quality Metrics & Evidence Request Audit
+        print(f"6. NEXT BEST ACTION [RECOMMENDED]:")
+        print(f"   - Action: {stored_case.recommended_nba}")
+        print(f"   - Rationale: {stored_case.nba_rationale}")
+        print(f"   - Execution Boundary: {stored_case.execution_status.value.upper()}")
+
+        print(f"7. APPROVAL / AUTHORIZATION STATUS:")
+        if stored_case.approval_required:
+            print(f"   - Status: PENDING_APPROVAL (Action '{stored_case.recommended_nba}' held at authorization boundary)")
+            print(f"   - Human Authorizer Required: Level {stored_case.approval_route}")
+        else:
+            print(f"   - Status: AUTO_APPROVED / RECOMMENDED")
+
+        print(f"8. TIGERGRAPH GRAPH WRITEBACK:")
+        mode_str = "LIVE" if investigator.writeback_engine.is_live_deployment() else "OFFLINE"
+        print(f"   - Writeback Status: {'SUCCESS' if stored_case.written_to_graph else 'FAILED'} (Mode: {mode_str})")
+        print(f"   - Vertices Linked: Case:{stored_case.case_id}, Transaction:{stored_case.triggering_txn_id}, Card:{stored_case.card_id}")
+
+        print(f"9. HISTORICAL CASE MEMORY [HISTORICAL PRECEDENT]:")
+        if stored_case.related_historical_case_ids:
+            for hid in stored_case.related_historical_case_ids[:2]:
+                print(f"   - Related Historical Case: {hid} [Source: closed_case:{hid}] (Separated from current evidence)")
+        else:
+            print(f"   - Related Historical Cases: None matching")
+
+        print(f"10. FINCEN SAR COMPLIANCE [REGULATORY]:")
+        print(f"   - SAR Required: {stored_case.sar_data.sar_required}")
+        print(f"   - SAR Status: {stored_case.sar_data.sar_status} (Filing: {stored_case.sar_data.filing_status})")
+        if stored_case.sar_data.sar_required:
+            print(f"   - SAR Rationale: {stored_case.sar_data.sar_rationale}")
+            print(f"   - Exposure USD: ${stored_case.sar_data.exposure_usd:.2f}")
+
+        print(f"11. FINAL CASE OUTCOME & LIFECYCLE:")
+        print(f"   - Final Outcome: {stored_case.final_outcome.upper()}")
+        print(f"   - Final Lifecycle State: {stored_case.status.value}")
+
+    # Aggregate Quality Metrics
     n_cases = len(results)
     avg_tools = total_tools_called / n_cases if n_cases else 0.0
     duplicate_rate = (duplicate_calls / n_cases) * 100 if n_cases else 0.0
@@ -158,11 +190,7 @@ def run_benchmark():
 
     # Contamination Audit
     contaminated_cases = 0
-    audit_table_rows = []
-    justified_requests_count = 0
-
     for res in results:
-        # Check for invalid entity strings in tool arguments, steps, or evidence summaries
         has_contamination = False
         for step in res.investigation_steps:
             for k, v in step.input_args.items():
@@ -177,68 +205,11 @@ def run_benchmark():
         if has_contamination:
             contaminated_cases += 1
 
-        # Classify Evidence Request Decision
-        if res.evidence_requests:
-            req = res.evidence_requests[0]
-            req_type = req.request_type
-            pol_ref = req.policy_reference
-            gap = req.evidence_gap_addressed
-            
-            # Classification
-            if req_type == "customer_validation" and res.trigger.trigger_type == TriggerType.CUSTOMER_REPORT:
-                classification = "unnecessary (customer already reported denial)"
-            elif res.trigger.model_risk_score < 0.20 and res.final_assessment.fraud_assessment.value == "likely_benign":
-                classification = "unnecessary (low risk benign baseline)"
-            elif "R1" in pol_ref or "R5" in pol_ref or "R6" in pol_ref or "R8" in pol_ref:
-                classification = "justified (policy-mandated verification)"
-                justified_requests_count += 1
-            else:
-                classification = "justified (unresolved information gap)"
-                justified_requests_count += 1
-
-            audit_table_rows.append({
-                "case_id": res.case_id,
-                "requested": "YES",
-                "reason": classification,
-                "policy_required": "YES" if ("R1" in pol_ref or "R5" in pol_ref or "R6" in pol_ref or "R8" in pol_ref) else "NO",
-                "gap": gap[:45] + "..." if len(gap) > 45 else gap
-            })
-        else:
-            audit_table_rows.append({
-                "case_id": res.case_id,
-                "requested": "NO",
-                "reason": "sufficient evidence / benign baseline / customer report authoritative",
-                "policy_required": "NO",
-                "gap": "None (evidence sufficient for NBA)"
-            })
-
-    justified_rate = (justified_requests_count / evidence_requested_count * 100) if evidence_requested_count > 0 else 100.0
-
-    print("\n" + "=" * 100)
-    print("STAGE 7 EVIDENCE REQUEST AUDIT TABLE")
-    print("=" * 100)
-    print(f"{'CASE':<10} | {'REQUESTED?':<10} | {'REASON / CLASSIFICATION':<42} | {'POLICY REQ?':<11} | {'INFORMATION GAP'}")
-    print("-" * 100)
-    for row in audit_table_rows:
-        print(f"{row['case_id']:<10} | {row['requested']:<10} | {row['reason']:<42} | {row['policy_required']:<11} | {row['gap']}")
-    print("=" * 100)
-
-    print("\n" + "=" * 80)
-    print("ORCHESTRATION QUALITY METRICS SUMMARY")
-    print("=" * 80)
-    print(f"Total Cases Evaluated:              {n_cases}")
-    print(f"Average Tool Calls / Case:          {avg_tools:.2f}")
-    print(f"Duplicate Tool Call Rate:           {duplicate_rate:.1f}%")
-    print(f"Max Allowed Steps:                  8")
-    print(f"Cases Stopping Within Limit:        {stop_rate:.1f}%")
-    print(f"Evidence Request Rate:              {ev_req_rate:.1f}%")
-    print(f"Justified Evidence Request Rate:    {justified_rate:.1f}%")
-    print(f"Reassessment Rate:                  {reassess_rate:.1f}%")
-    # Invariant Verification across all benchmark results
+    # Invariant Verification across all 20 benchmark results
     policy_reference_mismatches = 0
     destructive_without_policy_ref = 0
     destructive_when_denied = 0
-
+    persisted_cases_count = len(investigator.case_store.list_cases())
     destructive_action_set = {"block_card", "block_all_cards", "freeze_account", "decline_transaction"}
 
     for res in results:
@@ -256,20 +227,32 @@ def run_benchmark():
             if not nba_refs.issubset(evaluated_rules):
                 policy_reference_mismatches += 1
 
+    print("\n" + "=" * 80)
+    print("STAGE 8 BENCHMARK & CASE PERSISTENCE METRICS SUMMARY")
+    print("=" * 80)
+    print(f"Total Cases Evaluated:              {n_cases} (Target: 20)")
+    print(f"Persisted Case Memory Records:      {persisted_cases_count} (Target: 20)")
+    print(f"Average Tool Calls / Case:          {avg_tools:.2f}")
+    print(f"Duplicate Tool Call Rate:           {duplicate_rate:.1f}%")
+    print(f"Cases Stopping Within Limit:        {stop_rate:.1f}%")
+    print(f"Missing-Entity Contamination:       {contaminated_cases} (Target: 0)")
     print(f"Policy Reference Mismatches:        {policy_reference_mismatches} (Target: 0)")
     print(f"Unreferenced Destructive Actions:   {destructive_without_policy_ref} (Target: 0)")
     print(f"Denied Destructive Actions Emitted: {destructive_when_denied} (Target: 0)")
     print("=" * 80)
+
     if (
+        n_cases == 20 and
+        persisted_cases_count == 20 and
         contaminated_cases == 0 and
         unsupported_rate == 0.0 and
         policy_reference_mismatches == 0 and
         destructive_without_policy_ref == 0 and
         destructive_when_denied == 0
     ):
-        print("[SUCCESS] Stage 7 Agentic Investigation Orchestrator audit & policy invariant criteria passed!")
+        print("[SUCCESS] Stage 8 Case Memory, Persistence & Graph Writeback Benchmark passed with 0 invariant violations!")
     else:
-        print("[WARNING] Audit criteria violation detected.")
+        print("[WARNING] Invariant violation or incomplete benchmark run.")
 
 if __name__ == "__main__":
     run_benchmark()

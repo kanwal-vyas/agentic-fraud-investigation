@@ -200,3 +200,82 @@ class SampleGraphClient:
                 "similarity_reason": f"Matched historical case on {customer_id or card_id or pattern}",
             })
         return cases
+
+    def upsert_case(
+        self,
+        case_id: str,
+        status: str,
+        verdict: str,
+        fraud_probability: float,
+        pattern: str,
+        pattern_description: str,
+        exposure_usd: float,
+        summary: str,
+        created_at: str
+    ) -> Dict[str, Any]:
+        """Idempotently upserts a Case vertex into offline graph memory."""
+        if not hasattr(self, "_active_cases"):
+            self._active_cases: Dict[str, Dict[str, Any]] = {}
+            self._case_edges: Dict[str, List[Dict[str, Any]]] = {}
+
+        self._active_cases[case_id] = {
+            "case_id": case_id,
+            "status": status,
+            "verdict": verdict,
+            "fraud_probability": fraud_probability,
+            "pattern": pattern,
+            "pattern_description": pattern_description,
+            "exposure_usd": exposure_usd,
+            "summary": summary,
+            "created_at": created_at
+        }
+        return self._active_cases[case_id]
+
+    def upsert_edge(
+        self,
+        source_vertex_type: str,
+        source_vertex_id: str,
+        edge_type: str,
+        target_vertex_type: str,
+        target_vertex_id: str,
+        attributes: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Idempotently upserts a graph edge into offline graph memory."""
+        if not hasattr(self, "_case_edges"):
+            self._active_cases: Dict[str, Dict[str, Any]] = {}
+            self._case_edges: Dict[str, List[Dict[str, Any]]] = {}
+
+        edge_record = {
+            "source_type": source_vertex_type,
+            "source_id": source_vertex_id,
+            "edge_type": edge_type,
+            "target_type": target_vertex_type,
+            "target_id": target_vertex_id,
+            "attributes": attributes or {}
+        }
+        
+        edges = self._case_edges.setdefault(source_vertex_id, [])
+        # Prevent duplicate edge
+        for existing in edges:
+            if existing["edge_type"] == edge_type and existing["target_id"] == target_vertex_id:
+                existing["attributes"] = attributes or {}
+                return existing
+        edges.append(edge_record)
+        return edge_record
+
+    def get_case(self, case_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieves an active case vertex from offline graph memory."""
+        if not hasattr(self, "_active_cases"):
+            return None
+        return self._active_cases.get(case_id)
+
+    def get_cases_for_card(self, card_id: str) -> List[Dict[str, Any]]:
+        """Retrieves active cases connected to a card."""
+        if not hasattr(self, "_case_edges") or not hasattr(self, "_active_cases"):
+            return []
+        matching_case_ids = []
+        for cid, edges in self._case_edges.items():
+            for e in edges:
+                if e["edge_type"] in ["ON_CARD", "CONNECTED_TO"] and e["target_id"] == card_id:
+                    matching_case_ids.append(cid)
+        return [self._active_cases[cid] for cid in set(matching_case_ids) if cid in self._active_cases]

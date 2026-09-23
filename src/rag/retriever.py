@@ -83,8 +83,9 @@ class GraphRAGRetriever:
     - 10 Official Policy Rules (R1 - R10)
     - 5 Regulatory Compliance References
     """
-    def __init__(self, corpus: Optional[GraphRAGCorpus] = None):
+    def __init__(self, corpus: Optional[GraphRAGCorpus] = None, case_store: Optional[Any] = None):
         self.corpus = corpus or GraphRAGCorpus()
+        self.case_store = case_store
         
         # Prepare closed cases records
         self.closed_cases_list = self.corpus.closed_cases_df.to_dict(orient="records")
@@ -123,14 +124,28 @@ class GraphRAGRetriever:
     ) -> List[HistoricalCaseMatch]:
         """
         Retrieves relevant historical cases using hybrid BM25 + metadata boosts.
-        Ensures both confirmed fraud and cleared precedent can be discovered.
+        Ensures both static closed cases and dynamic persisted case memory can be discovered.
         """
+        matches: List[HistoricalCaseMatch] = []
+
+        # 1. Query Dynamic Case Memory Store if available
+        if self.case_store is not None:
+            query_params = {
+                "customer_id": customer_id,
+                "card_id": card_id,
+                "pattern": pattern,
+                "outcome": outcome
+            }
+            try:
+                store_matches = self.case_store.search_similar_cases(query_params, top_k=top_k)
+                matches.extend(store_matches)
+            except Exception:
+                pass
+
+        # 2. Query Static Closed Cases Corpus
         scored_indices = self.cases_index.score(query_text)
         scores_by_idx = dict(scored_indices)
 
-        matches: List[HistoricalCaseMatch] = []
-
-        # Iterate through candidates with boosting
         for idx, doc in enumerate(self.closed_cases_list):
             base_score = scores_by_idx.get(idx, 0.0)
             reasons = []
@@ -174,7 +189,14 @@ class GraphRAGRetriever:
                 )
 
         matches.sort(key=lambda x: x.relevance_score, reverse=True)
-        return matches[:top_k]
+        # Deduplicate matches by case_id preserving highest score
+        seen_ids = set()
+        deduped = []
+        for m in matches:
+            if m.case_id not in seen_ids:
+                seen_ids.add(m.case_id)
+                deduped.append(m)
+        return deduped[:top_k]
 
     # -------------------------------------------------------------
     # 2. Policy Rule Retrieval

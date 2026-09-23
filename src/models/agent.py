@@ -97,3 +97,7 @@ class InvestigationResult(BaseModel):
     explanation: StructuredExplanation
     total_tool_calls: int = 0
     total_steps: int = 0
+    persisted_case_id: Optional[str] = None
+    written_to_graph: bool = False
+    sar_record: Optional[Any] = None
+
