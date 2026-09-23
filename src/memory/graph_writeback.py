@@ -51,26 +51,26 @@ class CaseGraphWritebackEngine:
         }
 
         if mode == "LIVE" and self.tg_client is not None:
-            # 1. Upsert Case Vertex
-            self.tg_client.upsert_vertex("Case", case.case_id, case_attributes)
-            entities_linked.append(f"Case:{case.case_id}")
+            # 1. Upsert InvestigationCase Vertex
+            self.tg_client.upsert_vertex("InvestigationCase", case.case_id, case_attributes)
+            entities_linked.append(f"InvestigationCase:{case.case_id}")
 
-            # 2. Link Case -> Transaction (INVOLVES)
+            # 2. Link InvestigationCase -> Transaction (INVOLVES)
             if case.triggering_txn_id:
                 txn_str = str(case.triggering_txn_id)
-                self.tg_client.upsert_edge("Case", case.case_id, "INVOLVES", "Transaction", txn_str)
+                self.tg_client.upsert_edge("InvestigationCase", case.case_id, "INVOLVES", "Transaction", txn_str)
                 entities_linked.append(f"Transaction:{txn_str}")
 
-            # 3. Link Case -> Card (ON_CARD)
+            # 3. Link InvestigationCase -> Card (ON_CARD)
             if case.card_id:
-                self.tg_client.upsert_edge("Case", case.case_id, "ON_CARD", "Card", case.card_id)
+                self.tg_client.upsert_edge("InvestigationCase", case.case_id, "ON_CARD", "Card", case.card_id)
                 entities_linked.append(f"Card:{case.card_id}")
 
-            # 4. Link Case -> Connected Cards (CONNECTED_TO)
+            # 4. Link InvestigationCase -> Connected Cards (CONNECTED_TO)
             connected_cards = case.related_entities.get("cards", [])
             for cc in connected_cards:
                 if cc != case.card_id:
-                    self.tg_client.upsert_edge("Case", case.case_id, "CONNECTED_TO", "Card", cc)
+                    self.tg_client.upsert_edge("InvestigationCase", case.case_id, "CONNECTED_TO", "Card", cc)
                     entities_linked.append(f"ConnectedCard:{cc}")
 
         else:

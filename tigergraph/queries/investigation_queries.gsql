@@ -16,12 +16,12 @@ CREATE OR REPLACE QUERY get_transaction(VERTEX<Transaction> txn) FOR GRAPH Fraud
     RegionBilled = SELECT r FROM Start:s -(BILLED_IN:e)-> BillingRegion:r;
     EmailUsed = SELECT em FROM Start:s -(PURCHASER_EMAIL:e)-> EmailDomain:em;
 
-    PRINT Start[Start.txn_id, Start.amount, Start.ts_str, Start.channel, Start.risk_score, Start.product_cd, Start.addr1, Start.addr2];
-    PRINT CardOwner[CardOwner.card_id, CardOwner.issuer_code, CardOwner.card_network, CardOwner.card_type];
-    PRINT CustomerOwner[CustomerOwner.customer_id];
-    PRINT DeviceUsed[DeviceUsed.profile_id, DeviceUsed.device_info, DeviceUsed.os, DeviceUsed.browser, DeviceUsed.screen, DeviceUsed.device_type];
-    PRINT RegionBilled[RegionBilled.region_code, RegionBilled.country_code];
-    PRINT EmailUsed[EmailUsed.domain];
+    PRINT Start;
+    PRINT CardOwner;
+    PRINT CustomerOwner;
+    PRINT DeviceUsed;
+    PRINT RegionBilled;
+    PRINT EmailUsed;
 }
 
 // -------------------------------------------------------------
@@ -36,10 +36,10 @@ CREATE OR REPLACE QUERY get_customer_transaction_history(VERTEX<Customer> cust, 
     
     Devices = SELECT d FROM Txns:t -(USED_DEVICE:e)-> DeviceProfile:d;
 
-    PRINT Start[Start.customer_id];
-    PRINT Cards[Cards.card_id, Cards.card_network, Cards.card_type];
-    PRINT Txns[Txns.txn_id, Txns.amount, Txns.ts_str, Txns.channel, Txns.risk_score, Txns.product_cd, Txns.addr1];
-    PRINT Devices[Devices.profile_id, Devices.device_info];
+    PRINT Start;
+    PRINT Cards;
+    PRINT Txns;
+    PRINT Devices;
 }
 
 // -------------------------------------------------------------
@@ -51,8 +51,8 @@ CREATE OR REPLACE QUERY get_card_transaction_history(VERTEX<Card> card_node, INT
            ORDER BY t.ts DESC
            LIMIT limit_count;
     
-    PRINT Start[Start.card_id, Start.customer_id, Start.issuer_code, Start.card_network, Start.card_type];
-    PRINT Txns[Txns.txn_id, Txns.amount, Txns.ts_str, Txns.channel, Txns.risk_score, Txns.addr1];
+    PRINT Start;
+    PRINT Txns;
 }
 
 // -------------------------------------------------------------
@@ -90,9 +90,9 @@ CREATE OR REPLACE QUERY find_shared_devices(VERTEX<DeviceProfile> dev) FOR GRAPH
     Cards = SELECT c FROM Txns:t -(PERFORMED_BY:e)-> Card:c;
     Customers = SELECT cust FROM Cards:c -(OWNED_BY:e)-> Customer:cust;
 
-    PRINT Start[Start.profile_id, Start.device_info, Start.os, Start.browser, Start.device_type];
-    PRINT Cards[Cards.card_id, Cards.customer_id];
-    PRINT Customers[Customers.customer_id];
+    PRINT Start;
+    PRINT Cards;
+    PRINT Customers;
 }
 
 // -------------------------------------------------------------
@@ -111,25 +111,22 @@ CREATE OR REPLACE QUERY detect_card_testing(VERTEX<Card> card_node, INT window_h
                 WHERE t.amount >= 50.0
                 ORDER BY t.ts ASC;
 
-    PRINT Start[Start.card_id];
-    PRINT MicroTxns[MicroTxns.txn_id, MicroTxns.amount, MicroTxns.ts_str, MicroTxns.risk_score];
-    PRINT LargeTxns[LargeTxns.txn_id, LargeTxns.amount, LargeTxns.ts_str, LargeTxns.risk_score];
+    PRINT Start;
+    PRINT MicroTxns;
+    PRINT LargeTxns;
 }
 
 // -------------------------------------------------------------
 // 7. DETECT VELOCITY PATTERN
 // -------------------------------------------------------------
 CREATE OR REPLACE QUERY detect_velocity_pattern(VERTEX<Card> card_node, INT limit_count = 50) FOR GRAPH FraudGraph {
-    SumAccum<DOUBLE> @total_amt;
-    SumAccum<INT> @txn_count;
-
     Start = {card_node};
     Txns = SELECT t FROM Start:s -(PERFORMED_TXN:e)-> Transaction:t
            ORDER BY t.ts DESC
            LIMIT limit_count;
 
-    PRINT Start[Start.card_id];
-    PRINT Txns[Txns.txn_id, Txns.amount, Txns.ts_str, Txns.channel, Txns.risk_score];
+    PRINT Start;
+    PRINT Txns;
 }
 
 // -------------------------------------------------------------
@@ -141,8 +138,8 @@ CREATE OR REPLACE QUERY detect_regional_anomaly(VERTEX<Transaction> txn) FOR GRA
     AllCardTxns = SELECT t FROM Cards:c -(PERFORMED_TXN:e)-> Transaction:t
                   LIMIT 100;
     
-    PRINT Start[Start.txn_id, Start.addr1, Start.addr2, Start.channel, Start.ts_str];
-    PRINT AllCardTxns[AllCardTxns.txn_id, AllCardTxns.addr1, AllCardTxns.addr2, AllCardTxns.channel, AllCardTxns.ts_str];
+    PRINT Start;
+    PRINT AllCardTxns;
 }
 
 // -------------------------------------------------------------
@@ -162,8 +159,8 @@ CREATE OR REPLACE QUERY get_historical_cases(VERTEX<Customer> cust, INT top_k = 
     DevCards = SELECT c FROM DevTxns:t -(PERFORMED_BY:e)-> Card:c;
     ConnectedCases = SELECT cc FROM DevCards:c -(HAS_CASE:e)-> ClosedCase:cc;
 
-    PRINT DirectCases[DirectCases.case_id, DirectCases.customer_id, DirectCases.card_id, DirectCases.outcome, DirectCases.pattern, DirectCases.exposure_usd, DirectCases.analyst_notes];
-    PRINT ConnectedCases[ConnectedCases.case_id, ConnectedCases.customer_id, ConnectedCases.card_id, ConnectedCases.outcome, ConnectedCases.pattern, ConnectedCases.exposure_usd, ConnectedCases.analyst_notes];
+    PRINT DirectCases;
+    PRINT ConnectedCases;
 }
 
 // -------------------------------------------------------------
@@ -179,10 +176,10 @@ CREATE OR REPLACE QUERY find_connected_cards(VERTEX<Card> card_node) FOR GRAPH F
     DevTxns = SELECT t FROM Devs:d -(USED_IN_TXN:e)-> Transaction:t;
     DevCards = SELECT c FROM DevTxns:t -(PERFORMED_BY:e)-> Card:c;
 
-    PRINT Start[Start.card_id];
-    PRINT CustCards[CustCards.card_id, CustCards.customer_id];
-    PRINT DevCards[DevCards.card_id, DevCards.customer_id];
-    PRINT Devs[Devs.profile_id, Devs.device_info];
+    PRINT Start;
+    PRINT CustCards;
+    PRINT DevCards;
+    PRINT Devs;
 }
 
 // -------------------------------------------------------------
@@ -200,19 +197,18 @@ CREATE OR REPLACE QUERY persist_case_node(
     STRING triggering_txn_id,
     STRING card_id
 ) FOR GRAPH FraudGraph {
-    INSERT INTO Case (PRIMARY_ID, status, verdict, fraud_probability, pattern, pattern_description, exposure_usd, summary, created_at)
+    INSERT INTO InvestigationCase (PRIMARY_ID, status, verdict, fraud_probability, pattern, pattern_description, exposure_usd, summary, created_at)
     VALUES (case_id, status, verdict, fraud_probability, pattern, pattern_description, exposure_usd, summary, now());
     
     IF triggering_txn_id != "" THEN
-        INSERT INTO INVOLVES (FROM, TO) VALUES (case_id Case, triggering_txn_id Transaction);
+        INSERT INTO INVOLVES (FROM, TO) VALUES (case_id InvestigationCase, triggering_txn_id Transaction);
     END;
     
     IF card_id != "" THEN
-        INSERT INTO ON_CARD (FROM, TO) VALUES (case_id Case, card_id Card);
+        INSERT INTO ON_CARD (FROM, TO) VALUES (case_id InvestigationCase, card_id Card);
     END;
     
     PRINT "SUCCESS" AS result;
 }
 
 INSTALL QUERY get_transaction, get_customer_transaction_history, get_card_transaction_history, get_transaction_neighborhood, find_shared_devices, detect_card_testing, detect_velocity_pattern, detect_regional_anomaly, get_historical_cases, find_connected_cards, persist_case_node
-

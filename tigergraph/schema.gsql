@@ -1,10 +1,6 @@
 // TigerGraph GSQL Schema Definition for Fraud Investigation System
 // Graph Name: FraudGraph
 
-CREATE GRAPH FraudGraph()
-
-USE GRAPH FraudGraph
-
 // -------------------------------------------------------------
 // 1. VERTEX DEFINITIONS
 // -------------------------------------------------------------
@@ -12,7 +8,7 @@ USE GRAPH FraudGraph
 // Customer Vertex
 CREATE VERTEX Customer (
     PRIMARY_ID customer_id STRING
-) WITH STATS="OUTDEGREE_BY_EDGETYPE";
+) WITH STATS="OUTDEGREE_BY_EDGETYPE"
 
 // Card Vertex
 CREATE VERTEX Card (
@@ -21,7 +17,7 @@ CREATE VERTEX Card (
     issuer_code INT,
     card_network STRING,
     card_type STRING
-) WITH STATS="OUTDEGREE_BY_EDGETYPE";
+) WITH STATS="OUTDEGREE_BY_EDGETYPE"
 
 // DeviceProfile Vertex (DeviceInfo + OS + Browser + Screen)
 CREATE VERTEX DeviceProfile (
@@ -31,18 +27,18 @@ CREATE VERTEX DeviceProfile (
     browser STRING,
     screen STRING,
     device_type STRING
-) WITH STATS="OUTDEGREE_BY_EDGETYPE";
+) WITH STATS="OUTDEGREE_BY_EDGETYPE"
 
 // Email Domain Vertex
 CREATE VERTEX EmailDomain (
     PRIMARY_ID domain STRING
-) WITH STATS="OUTDEGREE_BY_EDGETYPE";
+) WITH STATS="OUTDEGREE_BY_EDGETYPE"
 
 // Billing Region Vertex (addr1, addr2)
 CREATE VERTEX BillingRegion (
     PRIMARY_ID region_code STRING,
     country_code STRING
-) WITH STATS="OUTDEGREE_BY_EDGETYPE";
+) WITH STATS="OUTDEGREE_BY_EDGETYPE"
 
 // Transaction Vertex
 CREATE VERTEX Transaction (
@@ -55,7 +51,7 @@ CREATE VERTEX Transaction (
     product_cd STRING,
     addr1 STRING,
     addr2 STRING
-) WITH STATS="OUTDEGREE_BY_EDGETYPE";
+) WITH STATS="OUTDEGREE_BY_EDGETYPE"
 
 // Closed Historical Case Vertex (Case Memory)
 CREATE VERTEX ClosedCase (
@@ -69,10 +65,10 @@ CREATE VERTEX ClosedCase (
     exposure_usd DOUBLE,
     n_txns INT,
     analyst_notes STRING
-) WITH STATS="OUTDEGREE_BY_EDGETYPE";
+) WITH STATS="OUTDEGREE_BY_EDGETYPE"
 
 // Active/Resolved Investigation Case Vertex (Live Case Persistence)
-CREATE VERTEX Case (
+CREATE VERTEX InvestigationCase (
     PRIMARY_ID case_id STRING,
     status STRING,
     verdict STRING,
@@ -82,7 +78,7 @@ CREATE VERTEX Case (
     exposure_usd DOUBLE,
     summary STRING,
     created_at DATETIME
-) WITH STATS="OUTDEGREE_BY_EDGETYPE";
+) WITH STATS="OUTDEGREE_BY_EDGETYPE"
 
 // -------------------------------------------------------------
 // 2. EDGE DEFINITIONS
@@ -91,43 +87,48 @@ CREATE VERTEX Case (
 // Customer owns Card
 CREATE DIRECTED EDGE OWNS_CARD (
     FROM Customer, TO Card
-) WITH REVERSE_EDGE="OWNED_BY";
+) WITH REVERSE_EDGE="OWNED_BY"
 
 // Card made Transaction
 CREATE DIRECTED EDGE PERFORMED_TXN (
     FROM Card, TO Transaction
-) WITH REVERSE_EDGE="PERFORMED_BY";
+) WITH REVERSE_EDGE="PERFORMED_BY"
 
 // Transaction used DeviceProfile
 CREATE DIRECTED EDGE USED_DEVICE (
     FROM Transaction, TO DeviceProfile
-) WITH REVERSE_EDGE="USED_IN_TXN";
+) WITH REVERSE_EDGE="USED_IN_TXN"
 
 // Transaction billed in BillingRegion
 CREATE DIRECTED EDGE BILLED_IN (
     FROM Transaction, TO BillingRegion
-) WITH REVERSE_EDGE="HAS_TXN";
+) WITH REVERSE_EDGE="HAS_TXN"
 
 // Transaction purchaser email domain
 CREATE DIRECTED EDGE PURCHASER_EMAIL (
     FROM Transaction, TO EmailDomain
-) WITH REVERSE_EDGE="EMAIL_IN_TXN";
+) WITH REVERSE_EDGE="EMAIL_IN_TXN"
 
 // Sequential transaction link within a card
 CREATE DIRECTED EDGE PRECEDES (
     FROM Transaction, TO Transaction,
     time_delta_seconds INT
-);
+)
 
 // Case relationships
 CREATE DIRECTED EDGE INVOLVES (
-    FROM ClosedCase, TO Transaction | FROM Case, TO Transaction
-) WITH REVERSE_EDGE="INVOLVED_IN_CASE";
+    FROM ClosedCase, TO Transaction | FROM InvestigationCase, TO Transaction
+) WITH REVERSE_EDGE="INVOLVED_IN_CASE"
 
 CREATE DIRECTED EDGE ON_CARD (
-    FROM ClosedCase, TO Card | FROM Case, TO Card
-) WITH REVERSE_EDGE="HAS_CASE";
+    FROM ClosedCase, TO Card | FROM InvestigationCase, TO Card
+) WITH REVERSE_EDGE="HAS_CASE"
 
 CREATE DIRECTED EDGE CONNECTED_TO (
-    FROM ClosedCase, TO Card | FROM Case, TO Card
-) WITH REVERSE_EDGE="CONNECTED_CASE";
+    FROM ClosedCase, TO Card | FROM InvestigationCase, TO Card
+) WITH REVERSE_EDGE="CONNECTED_CASE"
+
+// -------------------------------------------------------------
+// 3. GRAPH DEFINITION
+// -------------------------------------------------------------
+CREATE GRAPH FraudGraph(*)

@@ -76,7 +76,7 @@ def run_live_tigergraph_pipeline() -> Dict[str, Any]:
     
     # 5. Schema & Counts Verification
     print("\n[Step 5] Verifying Vertex and Edge counts...")
-    vertex_types = ["Customer", "Card", "Transaction", "DeviceProfile", "EmailDomain", "BillingRegion", "ClosedCase", "Case"]
+    vertex_types = ["Customer", "Card", "Transaction", "DeviceProfile", "EmailDomain", "BillingRegion", "ClosedCase", "InvestigationCase"]
     counts = {}
     for vt in vertex_types:
         try:

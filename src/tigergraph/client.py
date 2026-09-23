@@ -18,7 +18,10 @@ class TigerGraphClient:
         api_token: Optional[str] = None,
     ):
         self.host = host or settings.tg_host
-        self.graphname = graphname or settings.tg_graph
+        if graphname is not None:
+            self.graphname = graphname
+        else:
+            self.graphname = "FraudGraph" if settings.tg_graph in ("hhgoa-fraud-db", "") else settings.tg_graph
         self.username = username or settings.tg_username
         self.password = password or settings.tg_password
         self.secret = secret or settings.tg_secret
