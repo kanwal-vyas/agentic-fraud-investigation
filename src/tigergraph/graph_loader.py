@@ -13,15 +13,32 @@ class TigerGraphDataLoader:
     def __init__(self, tg_client: Optional[TigerGraphClient] = None):
         self.client = tg_client or TigerGraphClient()
 
-    def load_schema(self, schema_file: Path) -> Dict[str, Any]:
+    def load_schema(self, schema_file: Optional[Path] = None) -> Dict[str, Any]:
         """Executes the GSQL schema definition script."""
-        if not schema_file.exists():
-            return {"success": False, "error": f"Schema file not found at {schema_file}"}
+        file_path = schema_file or (settings.base_dir / "tigergraph" / "schema.gsql")
+        if not file_path.exists():
+            return {"success": False, "error": f"Schema file not found at {file_path}"}
         try:
-            conn = self.client.get_connection()
-            with open(schema_file, "r", encoding="utf-8") as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 gsql_content = f.read()
-            res = conn.gsql(gsql_content)
+            res = self.client.gsql(gsql_content)
+            return {"success": True, "result": res}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def deploy_schema(self, schema_file: Optional[Path] = None, graph_name: Optional[str] = None) -> Dict[str, Any]:
+        """Deploys the schema to the configured graph database."""
+        return self.load_schema(schema_file)
+
+    def install_queries(self, queries_file: Optional[Path] = None) -> Dict[str, Any]:
+        """Installs the GSQL investigation queries into TigerGraph."""
+        file_path = queries_file or (settings.base_dir / "tigergraph" / "queries" / "investigation_queries.gsql")
+        if not file_path.exists():
+            return {"success": False, "error": f"Queries file not found at {file_path}"}
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                gsql_content = f.read()
+            res = self.client.gsql(gsql_content)
             return {"success": True, "result": res}
         except Exception as e:
             return {"success": False, "error": str(e)}

@@ -184,3 +184,35 @@ CREATE OR REPLACE QUERY find_connected_cards(VERTEX<Card> card_node) FOR GRAPH F
     PRINT DevCards[DevCards.card_id, DevCards.customer_id];
     PRINT Devs[Devs.profile_id, Devs.device_info];
 }
+
+// -------------------------------------------------------------
+// 11. PERSIST CASE NODE (Case Graph Writeback)
+// -------------------------------------------------------------
+CREATE OR REPLACE QUERY persist_case_node(
+    STRING case_id,
+    STRING status,
+    STRING verdict,
+    DOUBLE fraud_probability,
+    STRING pattern,
+    STRING pattern_description,
+    DOUBLE exposure_usd,
+    STRING summary,
+    STRING triggering_txn_id,
+    STRING card_id
+) FOR GRAPH FraudGraph {
+    INSERT INTO Case (PRIMARY_ID, status, verdict, fraud_probability, pattern, pattern_description, exposure_usd, summary, created_at)
+    VALUES (case_id, status, verdict, fraud_probability, pattern, pattern_description, exposure_usd, summary, now());
+    
+    IF triggering_txn_id != "" THEN
+        INSERT INTO INVOLVES (FROM, TO) VALUES (case_id Case, triggering_txn_id Transaction);
+    END;
+    
+    IF card_id != "" THEN
+        INSERT INTO ON_CARD (FROM, TO) VALUES (case_id Case, card_id Card);
+    END;
+    
+    PRINT "SUCCESS" AS result;
+}
+
+INSTALL QUERY get_transaction, get_customer_transaction_history, get_card_transaction_history, get_transaction_neighborhood, find_shared_devices, detect_card_testing, detect_velocity_pattern, detect_regional_anomaly, get_historical_cases, find_connected_cards, persist_case_node
+
