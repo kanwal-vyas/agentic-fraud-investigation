@@ -465,7 +465,7 @@ class TigerGraphMCPServer:
         cust_id = args.get("customer_id")
         card_id = args.get("card_id")
         pattern = args.get("pattern")
-        top_k = int(args.get("top_k", 5))
+        top_k = int(args.get("top_k", args.get("limit", 5)))
 
         cases = self.tools.get_historical_cases(customer_id=cust_id, card_id=card_id, pattern=pattern, top_k=top_k)
 
