@@ -44,397 +44,647 @@ def index_page():
     html_content = """<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TigerGraph Agentic Fraud Investigation Console</title>
-    <style>
-        :root {
-            --bg-primary: #0B1120;
-            --bg-secondary: #111827;
-            --bg-card: #1F2937;
-            --text-primary: #F9FAFB;
-            --text-secondary: #9CA3AF;
-            --accent-blue: #3B82F6;
-            --accent-cyan: #06B6D4;
-            --danger: #EF4444;
-            --warning: #F59E0B;
-            --success: #10B981;
-            --border: #374151;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; }
-        body { background: var(--bg-primary); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; }
-        
-        #sidebar { width: 340px; background: var(--bg-secondary); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
-        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); }
-        .sidebar-header h1 { font-size: 1.1rem; color: var(--accent-cyan); display: flex; align-items: center; gap: 8px; }
-        .sidebar-header p { font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; }
-        
-        #case-list { flex: 1; overflow-y: auto; padding: 10px; }
-        .case-item { padding: 12px; margin-bottom: 8px; border-radius: 6px; background: var(--bg-card); cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
-        .case-item:hover { border-color: var(--accent-cyan); }
-        .case-item.active { border-color: var(--accent-cyan); background: #1e3a5f; }
-        .case-header-row { display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 0.9rem; }
-        .case-meta-row { font-size: 0.75rem; color: var(--text-secondary); margin-top: 6px; display: flex; justify-content: space-between; }
-        
-        .badge { padding: 3px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; text-transform: uppercase; border: 1px solid; }
-        .badge-fraud { background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: rgba(239, 68, 68, 0.3); }
-        .badge-benign { background: rgba(16, 185, 129, 0.1); color: var(--success); border-color: rgba(16, 185, 129, 0.3); }
-        .badge-uncertain { background: rgba(245, 158, 11, 0.1); color: var(--warning); border-color: rgba(245, 158, 11, 0.3); }
-        .badge-live { background: rgba(59, 130, 246, 0.1); color: var(--accent-blue); border-color: var(--accent-blue); }
-        .badge-offline { background: rgba(156, 163, 175, 0.1); color: var(--text-secondary); border-color: var(--text-secondary); }
-        
-        #main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-primary); }
-        
-        .top-navbar { height: 70px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 25px; flex-shrink: 0; }
-        .case-title { font-size: 1.3rem; font-weight: 600; }
-        .system-status { display: flex; gap: 10px; }
-        
-        .tab-bar { display: flex; background: var(--bg-secondary); border-bottom: 1px solid var(--border); padding: 0 25px; flex-shrink: 0; }
-        .tab-btn { padding: 15px 20px; color: var(--text-secondary); background: none; border: none; font-size: 0.9rem; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
-        .tab-btn:hover { color: var(--text-primary); }
-        .tab-btn.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
-        
-        #dashboard-body { flex: 1; overflow-y: auto; padding: 25px; }
-        
-        .grid-container { display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px; }
-        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
-        .col-4 { grid-column: span 4; }
-        .col-6 { grid-column: span 6; }
-        .col-8 { grid-column: span 8; }
-        .col-12 { grid-column: span 12; }
-        
-        .card-header { font-size: 1rem; color: var(--accent-cyan); margin-bottom: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-        
-        .stat-val { font-size: 1.6rem; font-weight: 600; margin-bottom: 5px; }
-        .stat-sub { font-size: 0.85rem; color: var(--text-secondary); }
-        
-        .timeline-step { padding: 12px 15px; border-left: 2px solid var(--border); margin-left: 10px; position: relative; font-size: 0.85rem; background: rgba(0,0,0,0.2); border-radius: 0 6px 6px 0; margin-bottom: 10px; }
-        .timeline-step::before { content: ''; position: absolute; left: -7px; top: 16px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent-cyan); border: 2px solid var(--bg-card); }
-        .timeline-tool { font-weight: 600; color: var(--accent-blue); font-size: 0.95rem; margin-bottom: 4px; }
-        .timeline-reason { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 8px; font-style: italic; }
-        
-        .evidence-list { list-style: none; }
-        .evidence-item { padding: 12px; border-radius: 6px; background: rgba(0,0,0,0.2); margin-bottom: 10px; font-size: 0.85rem; border-left: 3px solid var(--accent-blue); line-height: 1.4; }
-        .evidence-item.historical { border-left-color: #8B5CF6; }
-        .evidence-tag { font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase; }
-        
-        .list-group { margin-bottom: 15px; }
-        .list-group li { font-size: 0.85rem; margin-bottom: 6px; margin-left: 18px; color: #D1D5DB; }
-        
-        .graph-container { width: 100%; height: 350px; background: #0F172A; border-radius: 6px; border: 1px solid var(--border); position: relative; overflow: hidden; }
-        
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TigerGraph Agentic Fraud Investigation</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#080c14;--bg-1:#0d1117;--bg-2:#161b22;--bg-3:#1c2333;--bg-4:#242d3d;
+  --tx-0:#e6edf3;--tx-1:#c9d1d9;--tx-2:#8b949e;--tx-3:#6e7681;
+  --red:#da3633;--red-dim:rgba(218,54,51,.12);
+  --amber:#d29922;--amber-dim:rgba(210,153,34,.12);
+  --green:#3fb950;--green-dim:rgba(63,185,80,.12);
+  --blue:#58a6ff;--blue-dim:rgba(88,166,255,.08);
+  --purple:#bc8cff;--purple-dim:rgba(188,140,255,.12);
+  --cyan:#39d2c0;--cyan-dim:rgba(57,210,192,.1);
+  --border:#21262d;--border-emphasis:#30363d;
+  --font-sans:'Inter',system-ui,-apple-system,sans-serif;
+  --font-mono:'JetBrains Mono','Consolas',monospace;
+  --radius:6px;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--tx-0);font-family:var(--font-sans);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+
+/* === SYSTEM BAR === */
+.sysbar{height:40px;background:var(--bg-1);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0;z-index:100}
+.sysbar-brand{font-weight:600;font-size:13px;color:var(--tx-1);letter-spacing:.3px;display:flex;align-items:center;gap:8px}
+.sysbar-brand svg{width:16px;height:16px;fill:var(--cyan)}
+.sysbar-sep{width:1px;height:20px;background:var(--border)}
+.sysbar-tag{font-size:11px;font-weight:500;padding:2px 8px;border-radius:10px;letter-spacing:.3px}
+.sysbar-tag.live{background:var(--green-dim);color:var(--green);border:1px solid rgba(63,185,80,.25)}
+.sysbar-tag.info{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(88,166,255,.15)}
+.sysbar-right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:11px;color:var(--tx-3)}
+
+/* === LAYOUT === */
+.layout{display:flex;height:calc(100vh - 40px)}
+
+/* === CASE NAV === */
+.case-nav{width:220px;background:var(--bg-1);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.case-nav-head{padding:12px 14px 8px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx-3)}
+.case-scroll{flex:1;overflow-y:auto;padding:0 6px 6px}
+.case-scroll::-webkit-scrollbar{width:4px}
+.case-scroll::-webkit-scrollbar-thumb{background:var(--border-emphasis);border-radius:4px}
+.ci{padding:8px 10px;border-radius:var(--radius);cursor:pointer;margin-bottom:2px;display:flex;align-items:center;justify-content:space-between;transition:background .15s}
+.ci:hover{background:var(--bg-2)}
+.ci.active{background:var(--bg-3);box-shadow:inset 2px 0 0 var(--blue)}
+.ci-id{font-weight:600;font-size:12px;font-family:var(--font-mono)}
+.ci-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.ci-dot.fraud{background:var(--red)}.ci-dot.benign{background:var(--green)}.ci-dot.uncertain{background:var(--amber)}
+
+/* === MAIN === */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* === CASE HEADER === */
+.case-head{padding:16px 24px 12px;background:var(--bg-1);border-bottom:1px solid var(--border);flex-shrink:0}
+.case-head-top{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
+.case-head-id{font-size:22px;font-weight:700;font-family:var(--font-mono);letter-spacing:-.5px}
+.case-head-label{font-size:12px;font-weight:500;padding:3px 10px;border-radius:10px}
+.case-head-label.fraud{background:var(--red-dim);color:var(--red)}.case-head-label.benign{background:var(--green-dim);color:var(--green)}.case-head-label.uncertain{background:var(--amber-dim);color:var(--amber)}
+.case-head-meta{display:flex;gap:20px;font-size:12px;color:var(--tx-2)}
+.case-head-meta span{display:flex;align-items:center;gap:4px}
+.case-head-meta .mono{font-family:var(--font-mono);color:var(--tx-1)}
+
+/* === WORKSPACE TABS === */
+.ws-tabs{display:flex;background:var(--bg-1);border-bottom:1px solid var(--border);padding:0 24px;flex-shrink:0}
+.ws-tab{padding:10px 16px;font-size:12px;font-weight:500;color:var(--tx-3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none}
+.ws-tab:hover{color:var(--tx-1)}
+.ws-tab.active{color:var(--tx-0);border-bottom-color:var(--blue)}
+
+/* === WORKSPACE CONTENT === */
+.ws-body{flex:1;overflow-y:auto;overflow-x:hidden}
+.ws-body::-webkit-scrollbar{width:6px}
+.ws-body::-webkit-scrollbar-thumb{background:var(--border-emphasis);border-radius:4px}
+.ws-panel{display:none;padding:20px 24px}
+.ws-panel.active{display:block}
+
+/* === INVESTIGATION TAB === */
+.inv-layout{display:grid;grid-template-columns:280px 1fr 260px;gap:20px;min-height:600px}
+.inv-col{display:flex;flex-direction:column;gap:16px}
+
+/* Agent Workflow */
+.trigger-block{background:var(--bg-2);border-radius:var(--radius);padding:14px 16px;border-left:3px solid var(--amber)}
+.trigger-type{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--amber);margin-bottom:4px}
+.trigger-text{font-size:12px;color:var(--tx-1);font-style:italic;line-height:1.6}
+
+.step{position:relative;padding:10px 14px;background:var(--bg-2);border-radius:var(--radius);cursor:pointer;transition:background .15s}
+.step:hover{background:var(--bg-3)}
+.step-num{font-size:10px;font-weight:600;color:var(--blue);font-family:var(--font-mono);margin-bottom:2px}
+.step-tool{font-size:12px;font-weight:600;color:var(--tx-0);margin-bottom:2px}
+.step-brief{font-size:11px;color:var(--tx-2);display:flex;align-items:center;gap:6px}
+.step-brief .live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);display:inline-block}
+.step-detail{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--tx-2);line-height:1.6}
+.step.open .step-detail{display:block}
+.step-connector{width:1px;height:12px;background:var(--border-emphasis);margin:0 auto}
+
+/* Graph Canvas */
+.graph-wrap{background:var(--bg-2);border-radius:var(--radius);border:1px solid var(--border);flex:1;min-height:0;position:relative;overflow:hidden}
+.graph-wrap canvas{display:block}
+.graph-title{position:absolute;top:10px;left:14px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--tx-3);z-index:2}
+.graph-legend{position:absolute;bottom:10px;left:14px;display:flex;gap:10px;z-index:2}
+.graph-legend span{font-size:10px;color:var(--tx-3);display:flex;align-items:center;gap:4px}
+.graph-legend .ldot{width:8px;height:8px;border-radius:50%}
+
+/* Decision Rail */
+.decision-section{margin-bottom:16px}
+.decision-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--tx-3);margin-bottom:6px}
+.decision-value{font-size:14px;font-weight:700;margin-bottom:4px}
+.decision-sub{font-size:11px;color:var(--tx-2);line-height:1.5}
+.decision-divider{height:1px;background:var(--border);margin:12px 0}
+.approval-flow{display:flex;flex-direction:column;gap:0;align-items:flex-start}
+.af-step{display:flex;align-items:center;gap:8px;font-size:11px;padding:4px 0}
+.af-icon{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
+.af-icon.done{background:var(--green-dim);color:var(--green)}.af-icon.pending{background:var(--amber-dim);color:var(--amber)}.af-icon.wait{background:var(--bg-3);color:var(--tx-3)}
+.af-line{width:1px;height:10px;background:var(--border-emphasis);margin-left:9px}
+.confidence-bar-wrap{margin-top:12px}
+.confidence-bar-bg{height:4px;background:var(--bg-4);border-radius:2px;overflow:hidden}
+.confidence-bar-fill{height:100%;border-radius:2px;transition:width .4s}
+
+/* === REASONING TAB === */
+.reason-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.reason-full{grid-column:1/-1}
+.signal-group{margin-bottom:16px}
+.signal-head{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.signal-head .sdot{width:6px;height:6px;border-radius:50%}
+.signal-item{font-size:12px;color:var(--tx-1);padding:6px 0;border-bottom:1px solid var(--border);line-height:1.5}
+.signal-item:last-child{border-bottom:none}
+.hist-case{padding:10px 14px;background:var(--bg-2);border-radius:var(--radius);margin-bottom:8px;cursor:pointer;transition:background .15s}
+.hist-case:hover{background:var(--bg-3)}
+.hist-case-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.hist-case-id{font-weight:600;font-family:var(--font-mono);font-size:12px}
+.hist-case-tag{font-size:10px;font-weight:500;padding:2px 6px;border-radius:8px}
+.hist-case-tag.fraud{background:var(--red-dim);color:var(--red)}.hist-case-tag.cleared{background:var(--green-dim);color:var(--green)}
+.hist-case-detail{font-size:11px;color:var(--tx-2);display:none;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);line-height:1.5}
+.hist-case.open .hist-case-detail{display:block}
+.hist-case-meta{font-size:11px;color:var(--tx-2);display:flex;gap:12px}
+.relevance-bar{width:60px;height:4px;background:var(--bg-4);border-radius:2px;overflow:hidden;display:inline-block;vertical-align:middle}
+.relevance-fill{height:100%;background:var(--blue);border-radius:2px}
+
+/* metrics row */
+.metrics-row{display:flex;gap:24px;padding:16px 0;border-bottom:1px solid var(--border);margin-bottom:16px}
+.metric{display:flex;flex-direction:column;gap:2px}
+.metric-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--tx-3)}
+.metric-value{font-size:18px;font-weight:700}
+
+/* === COMPLIANCE TAB === */
+.compliance-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
+.compliance-section{background:var(--bg-2);border-radius:var(--radius);padding:16px}
+.comp-head{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--tx-3);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.policy-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px}
+.policy-check{color:var(--green);font-size:11px}
+.lifecycle-flow{display:flex;flex-direction:column;gap:0}
+.lf-step{padding:6px 0;font-size:12px;display:flex;align-items:center;gap:8px}
+.lf-step .lf-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.lf-step .lf-dot.done{background:var(--green)}.lf-step .lf-dot.current{background:var(--amber);box-shadow:0 0 6px var(--amber)}.lf-step .lf-dot.future{background:var(--bg-4)}
+.lf-line{width:1px;height:8px;background:var(--border-emphasis);margin-left:3.5px}
+.wb-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px}
+.wb-check{color:var(--green);font-size:11px}
+.sar-status{font-size:16px;font-weight:600;margin-bottom:8px}
+.sar-detail{font-size:11px;color:var(--tx-2);line-height:1.6}
+.comp-note{margin-top:12px;padding:10px;background:var(--bg-3);border-radius:var(--radius);font-size:11px;color:var(--tx-2);line-height:1.5;border-left:2px solid var(--amber)}
+
+/* Evidence panel in reasoning */
+.evidence-section{background:var(--bg-2);border-radius:var(--radius);padding:16px}
+.ev-head{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--tx-3);margin-bottom:10px}
+.ev-item{padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--tx-1);line-height:1.5}
+.ev-item:last-child{border-bottom:none}
+.ev-source{font-size:10px;color:var(--tx-3);font-family:var(--font-mono);margin-top:2px}
+
+@media(max-width:1280px){
+  .inv-layout{grid-template-columns:240px 1fr 240px}
+  .case-nav{width:200px}
+}
+</style>
 </head>
 <body>
-    <div id="sidebar">
-        <div class="sidebar-header">
-            <h1>&#x2B21; TigerGraph Investigator</h1>
-            <p>Agentic Fraud Console</p>
-        </div>
-        <div id="case-list">Loading cases...</div>
+
+<!-- SYSTEM BAR -->
+<div class="sysbar">
+  <div class="sysbar-brand">
+    <svg viewBox="0 0 24 24"><polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="2" x2="12" y2="22" stroke="currentColor" stroke-width="1"/><line x1="2" y1="8.5" x2="22" y2="8.5" stroke="currentColor" stroke-width="1"/><line x1="2" y1="15.5" x2="22" y2="15.5" stroke="currentColor" stroke-width="1"/></svg>
+    TigerGraph Agentic Investigation
+  </div>
+  <div class="sysbar-sep"></div>
+  <span class="sysbar-tag" id="sys-live">Loading...</span>
+  <span class="sysbar-tag info" id="sys-graph">FraudGraph</span>
+  <div class="sysbar-right">
+    <span id="sys-count">—</span>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- CASE NAV -->
+  <div class="case-nav">
+    <div class="case-nav-head">Investigations</div>
+    <div class="case-scroll" id="case-list"></div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="case-head" id="case-head">
+      <div class="case-head-top">
+        <span class="case-head-id" id="ch-id">—</span>
+        <span class="case-head-label" id="ch-label">—</span>
+      </div>
+      <div class="case-head-meta" id="ch-meta"></div>
     </div>
-    <div id="main-content">
-        <div class="top-navbar">
-            <div class="case-title" id="active-case-title">Select a Case</div>
-            <div class="system-status" id="system-badges">
-                <span class="badge badge-offline">System Loading</span>
-            </div>
-        </div>
-        <div class="tab-bar">
-            <button class="tab-btn active" onclick="switchTab('tab1')">1. Investigation & Workflow</button>
-            <button class="tab-btn" onclick="switchTab('tab2')">2. Deep Reasoning</button>
-            <button class="tab-btn" onclick="switchTab('tab3')">3. Compliance & Memory</button>
-        </div>
-        <div id="dashboard-body">
-            <!-- Dynamic Content Injected Here -->
-        </div>
+
+    <div class="ws-tabs">
+      <button class="ws-tab active" data-tab="t-inv">Investigation</button>
+      <button class="ws-tab" data-tab="t-reason">Reasoning</button>
+      <button class="ws-tab" data-tab="t-comply">Compliance</button>
     </div>
 
-    <script>
-        let allCases = [];
-        let activeCaseId = "HHG-003";
+    <div class="ws-body">
+      <div class="ws-panel active" id="t-inv"></div>
+      <div class="ws-panel" id="t-reason"></div>
+      <div class="ws-panel" id="t-comply"></div>
+    </div>
+  </div>
+</div>
 
-        async function fetchCases() {
-            try {
-                const res = await fetch("/api/cases");
-                allCases = await res.json();
-                renderSidebar();
-                if (allCases.length > 0) {
-                    selectCase(activeCaseId);
-                }
-            } catch (err) {
-                document.getElementById("case-list").innerHTML = "<p style='color:var(--danger); padding:20px;'>Error loading cases.</p>";
-            }
-        }
+<script>
+let allCases=[], activeId='HHG-003';
 
-        function renderSidebar() {
-            const listEl = document.getElementById("case-list");
-            listEl.innerHTML = "";
-            allCases.forEach(c => {
-                const item = document.createElement("div");
-                item.className = `case-item ${c.case_id === activeCaseId ? 'active' : ''}`;
-                item.onclick = () => selectCase(c.case_id);
-                
-                let badgeClass = "badge-uncertain";
-                if (c.fraud_assessment === "likely_fraud") badgeClass = "badge-fraud";
-                if (c.fraud_assessment === "likely_benign") badgeClass = "badge-benign";
+async function init(){
+  try{
+    const r=await fetch('/api/cases');
+    allCases=await r.json();
+    const liveCount=allCases.filter(c=>c.written_to_graph).length;
+    document.getElementById('sys-live').textContent=liveCount===allCases.length?'LIVE':'PARTIAL';
+    document.getElementById('sys-live').className='sysbar-tag '+(liveCount===allCases.length?'live':'info');
+    document.getElementById('sys-count').textContent=allCases.length+'/20 benchmark cases';
+    renderNav();
+    selectCase(activeId);
+  }catch(e){
+    document.getElementById('case-list').innerHTML='<div style="padding:20px;color:var(--red)">Failed to load cases</div>';
+  }
+}
 
-                item.innerHTML = `
-                    <div class="case-header-row">
-                        <span>${c.case_id}</span>
-                        <span class="badge ${badgeClass}">${c.fraud_assessment.replace(/_/g, ' ')}</span>
-                    </div>
-                    <div class="case-meta-row">
-                        <span>${c.customer_id} | ${c.card_id}</span>
-                        <span>$${c.transaction_amount.toFixed(2)}</span>
-                    </div>
-                `;
-                listEl.appendChild(item);
-            });
-        }
+function renderNav(){
+  const el=document.getElementById('case-list');
+  el.innerHTML='';
+  allCases.forEach(c=>{
+    const d=document.createElement('div');
+    d.className='ci'+(c.case_id===activeId?' active':'');
+    d.onclick=()=>selectCase(c.case_id);
+    let dc='uncertain';
+    if(c.fraud_assessment==='likely_fraud')dc='fraud';
+    if(c.fraud_assessment==='likely_benign')dc='benign';
+    d.innerHTML=`<span class="ci-id">${c.case_id}</span><span class="ci-dot ${dc}"></span>`;
+    el.appendChild(d);
+  });
+}
 
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-            
-            // Assuming this is triggered by a click event
-            if(window.event && window.event.currentTarget) {
-                window.event.currentTarget.classList.add('active');
-            } else {
-                // Fallback: manually find and set active btn if called programmatically
-                if(tabId === 'tab1') document.querySelectorAll('.tab-btn')[0].classList.add('active');
-                if(tabId === 'tab2') document.querySelectorAll('.tab-btn')[1].classList.add('active');
-                if(tabId === 'tab3') document.querySelectorAll('.tab-btn')[2].classList.add('active');
-            }
-            
-            document.getElementById(tabId).classList.add('active');
-        }
+function switchTab(tabId){
+  document.querySelectorAll('.ws-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.ws-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
 
-        function renderGraphSVG(c) {
-            let nodes = [
-                { id: c.customer_id, label: 'Customer', sub: c.customer_id, type: 'customer', x: 250, y: 50 },
-                { id: c.card_id, label: 'Card', sub: c.card_id, type: 'card', x: 250, y: 150 },
-                { id: c.transaction_id, label: 'Transaction', sub: c.transaction_id, type: 'transaction', x: 250, y: 250 },
-                { id: c.case_id, label: 'Investigation Case', sub: c.case_id, type: 'case', x: 80, y: 150 }
-            ];
-            
-            let edges = [
-                { source: c.customer_id, target: c.card_id, label: 'owns' },
-                { source: c.card_id, target: c.transaction_id, label: 'charged' },
-                { source: c.transaction_id, target: c.case_id, label: 'investigates' },
-                { source: c.customer_id, target: c.case_id, label: 'investigates' }
-            ];
-            
-            if (c.historical_evidence && c.historical_evidence.length > 0) {
-                const maxDisplay = 3;
-                const toDisplay = c.historical_evidence.slice(0, maxDisplay);
-                toDisplay.forEach((h, i) => {
-                    let yPos = 50 + (i * 90);
-                    nodes.push({ id: h.case_id, label: 'Closed Case', sub: h.case_id, type: 'history', x: 450, y: yPos });
-                    edges.push({ source: c.customer_id, target: h.case_id, label: 'prior' });
-                });
-            }
+document.querySelectorAll('.ws-tab').forEach(t=>{
+  t.addEventListener('click',()=>switchTab(t.dataset.tab));
+});
 
-            let svg = `<svg width="100%" height="100%" viewBox="0 0 600 300">
-                <defs>
-                    <marker id="arrow" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569" />
-                    </marker>
-                </defs>`;
-                
-            edges.forEach(e => {
-                let n1 = nodes.find(n => n.id === e.source);
-                let n2 = nodes.find(n => n.id === e.target);
-                if(n1 && n2) {
-                    svg += `<line x1="${n1.x}" y1="${n1.y}" x2="${n2.x}" y2="${n2.y}" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />`;
-                }
-            });
+function selectCase(id){
+  activeId=id;
+  renderNav();
+  const c=allCases.find(x=>x.case_id===id);
+  if(!c)return;
 
-            nodes.forEach(n => {
-                let fill = n.type === 'customer' ? '#2563EB' : 
-                           n.type === 'card' ? '#06B6D4' : 
-                           n.type === 'transaction' ? '#F59E0B' : 
-                           n.type === 'case' ? '#EF4444' : '#8B5CF6';
-                svg += `
-                    <g transform="translate(${n.x}, ${n.y})">
-                        <circle r="22" fill="${fill}" stroke="#1E293B" stroke-width="3" />
-                        <text y="-30" text-anchor="middle" fill="#F9FAFB" font-size="11" font-weight="bold">${n.label}</text>
-                        <text y="35" text-anchor="middle" fill="#9CA3AF" font-size="10">${n.sub}</text>
-                    </g>`;
-            });
+  // Header
+  document.getElementById('ch-id').textContent=c.case_id;
+  const lbl=document.getElementById('ch-label');
+  let la='uncertain',lt=c.fraud_assessment.replace(/_/g,' ').toUpperCase();
+  if(c.fraud_assessment==='likely_fraud'){la='fraud'}
+  if(c.fraud_assessment==='likely_benign'){la='benign'}
+  lbl.className='case-head-label '+la;lbl.textContent=lt;
+  document.getElementById('ch-meta').innerHTML=
+    `<span>Customer <span class="mono">${c.customer_id}</span></span>`+
+    `<span>Card <span class="mono">${c.card_id}</span></span>`+
+    `<span>TXN <span class="mono">${c.transaction_id}</span></span>`+
+    `<span>${c.written_to_graph?'<span style="color:var(--green)">&#9679;</span> Live Writeback':'<span style="color:var(--tx-3)">&#9675;</span> Offline'}</span>`;
 
-            svg += `</svg>`;
-            return svg;
-        }
+  renderInvestigation(c);
+  renderReasoning(c);
+  renderCompliance(c);
+  switchTab('t-inv');
+}
 
-        function selectCase(caseId) {
-            activeCaseId = caseId;
-            renderSidebar();
-            const c = allCases.find(x => x.case_id === caseId);
-            if (!c) return;
+/* ===== TAB 1: INVESTIGATION ===== */
+function renderInvestigation(c){
+  const el=document.getElementById('t-inv');
 
-            document.getElementById("active-case-title").innerText = `Case ${c.case_id}`;
-            
-            let writebackStatus = c.written_to_graph ? '<span class="badge badge-live">LIVE TIGERGRAPH</span> <span class="badge badge-live">GSQL REST++</span> <span class="badge badge-live">DYNAMIC GRAPH RESOLUTION</span>' : '<span class="badge badge-offline">OFFLINE / CACHED</span>';
-            document.getElementById("system-badges").innerHTML = writebackStatus;
+  // Parse a short result from result_summary
+  function briefResult(s){
+    const m=s.match(/returned (\\d+) evidence items/);
+    const k=s.match(/Key findings: (.{0,80})/);
+    return (m?m[1]+' evidence items':'')+(k?' — '+k[1]+'…':'');
+  }
 
-            let fraudColor = c.fraud_assessment === 'likely_fraud' ? 'var(--danger)' : c.fraud_assessment === 'likely_benign' ? 'var(--success)' : 'var(--warning)';
+  // Build steps
+  let stepsHtml=`
+    <div class="trigger-block">
+      <div class="trigger-type">${c.trigger.trigger_type.replace(/_/g,' ')}</div>
+      <div class="trigger-text">${c.trigger.trigger_text}</div>
+    </div>`;
 
-            const db = document.getElementById("dashboard-body");
-            db.innerHTML = `
-                <!-- TAB 1: Investigation & Workflow -->
-                <div id="tab1" class="tab-content active">
-                    <div class="grid-container">
-                        <div class="card col-4">
-                            <div class="card-header">Triage Assessment</div>
-                            <div class="stat-val" style="color: ${fraudColor}">${c.fraud_assessment.toUpperCase().replace(/_/g, ' ')}</div>
-                            <div class="stat-sub">Model Trigger Risk Score: ${c.trigger.model_risk_score.toFixed(2)}</div>
-                            <div style="margin-top:15px; font-size:0.85rem; color:var(--text-secondary);">
-                                <strong>Trigger Context:</strong><br/>${c.trigger.trigger_text}
-                            </div>
-                        </div>
-                        
-                        <div class="card col-4">
-                            <div class="card-header">Next Best Action</div>
-                            <div class="stat-val" style="color: var(--accent-cyan)">${c.recommended_nba.replace(/_/g, ' ')}</div>
-                            <div class="stat-sub">Approval Required: ${c.approval_required ? 'YES (Human Analyst)' : 'NO (Auto-Route)'}</div>
-                            <div style="margin-top:15px; font-size:0.85rem; color:var(--text-secondary);">
-                                <strong>Execution State:</strong> ${c.execution_status} <br/>
-                                <strong>Lifecycle:</strong> ${c.lifecycle_state}
-                            </div>
-                        </div>
+  c.investigation_steps.forEach((s,i)=>{
+    stepsHtml+=`<div class="step-connector"></div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-num">STEP ${String(s.step_number).padStart(2,'0')}</div>
+      <div class="step-tool">${s.tool.replace(/_/g,' ')}</div>
+      <div class="step-brief"><span class="live-dot"></span> ${briefResult(s.result_summary)}</div>
+      <div class="step-detail">${s.result_summary}<br><br><em style="color:var(--tx-3)">Reason: ${s.reason}</em></div>
+    </div>`;
+  });
 
-                        <div class="card col-4">
-                            <div class="card-header">Workflow Summary</div>
-                            <p style="font-size: 0.85rem; line-height: 1.5; color: #D1D5DB;">${c.summary}</p>
-                        </div>
+  // Decision rail
+  let assessClass='uncertain';
+  if(c.fraud_assessment==='likely_fraud')assessClass='fraud';
+  if(c.fraud_assessment==='likely_benign')assessClass='benign';
+  let nbaColor=c.recommended_nba==='BLOCK_CARD'?'var(--red)':c.recommended_nba==='VERIFY_WITH_CUSTOMER'?'var(--amber)':'var(--tx-0)';
+  let confPct=Math.round(c.confidence*100);
+  let confColor=confPct>=70?'var(--red)':confPct>=50?'var(--amber)':'var(--tx-2)';
+  let uncColor=c.uncertainty_level==='high'?'var(--amber)':c.uncertainty_level==='low'?'var(--green)':'var(--tx-1)';
 
-                        <div class="card col-6">
-                            <div class="card-header">TigerGraph Subgraph Resolution</div>
-                            <div class="graph-container">
-                                ${renderGraphSVG(c)}
-                            </div>
-                        </div>
+  let decisionHtml=`
+    <div class="decision-section">
+      <div class="decision-label">Assessment</div>
+      <div class="decision-value" style="color:${assessClass==='fraud'?'var(--red)':assessClass==='benign'?'var(--green)':'var(--amber)'}">${c.fraud_assessment.replace(/_/g,' ').toUpperCase()}</div>
+      <div class="confidence-bar-wrap">
+        <div style="font-size:10px;color:var(--tx-3);margin-bottom:3px">Confidence ${confPct}%</div>
+        <div class="confidence-bar-bg"><div class="confidence-bar-fill" style="width:${confPct}%;background:${confColor}"></div></div>
+      </div>
+      <div style="font-size:11px;color:${uncColor};margin-top:6px">Uncertainty: ${c.uncertainty_level.toUpperCase()}</div>
+    </div>
+    <div class="decision-divider"></div>
+    <div class="decision-section">
+      <div class="decision-label">Next Best Action</div>
+      <div class="decision-value" style="color:${nbaColor}">${c.recommended_nba.replace(/_/g,' ')}</div>
+      <div class="decision-sub">Target: ${c.card_id}</div>
+    </div>
+    <div class="decision-divider"></div>
+    <div class="decision-section">
+      <div class="decision-label">Authorization</div>
+      <div class="approval-flow">
+        <div class="af-step"><div class="af-icon done">&#10003;</div><span>Agent Recommendation</span></div>
+        <div class="af-line"></div>
+        <div class="af-step"><div class="af-icon ${c.approval_required?'pending':'done'}">${c.approval_required?'!':'&#10003;'}</div><span>${c.approval_required?'L1 Human Approval Required':'Auto-Approved'}</span></div>
+        <div class="af-line"></div>
+        <div class="af-step"><div class="af-icon ${c.execution_status==='EXECUTED'?'done':'wait'}">${c.execution_status==='EXECUTED'?'&#10003;':'—'}</div><span>Execution: ${c.execution_status}</span></div>
+      </div>
+    </div>
+    <div class="decision-divider"></div>
+    <div class="decision-section">
+      <div class="decision-label">Lifecycle</div>
+      <div style="font-size:12px;font-weight:500;color:var(--tx-1)">${c.lifecycle_state.replace(/_/g,' ')}</div>
+    </div>`;
 
-                        <div class="card col-6">
-                            <div class="card-header">Agent Execution Timeline</div>
-                            <div style="max-height: 350px; overflow-y: auto; padding-right:10px;">
-                                ${c.investigation_steps.map(s => `
-                                    <div class="timeline-step">
-                                        <div class="timeline-tool">[${s.step_number}] Tool: ${s.tool}</div>
-                                        <div class="timeline-reason">${s.reason}</div>
-                                        <div>${s.result_summary}</div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+  el.innerHTML=`
+  <div class="inv-layout">
+    <div class="inv-col">${stepsHtml}</div>
+    <div class="inv-col" style="min-height:0">
+      <div class="graph-wrap" id="graph-canvas-wrap">
+        <div class="graph-title">TigerGraph Investigation Subgraph</div>
+        <canvas id="graph-canvas"></canvas>
+        <div class="graph-legend">
+          <span><span class="ldot" style="background:var(--blue)"></span>Customer</span>
+          <span><span class="ldot" style="background:var(--cyan)"></span>Card</span>
+          <span><span class="ldot" style="background:var(--amber)"></span>Transaction</span>
+          <span><span class="ldot" style="background:var(--red)"></span>Case</span>
+          <span><span class="ldot" style="background:var(--purple)"></span>History</span>
+        </div>
+      </div>
+    </div>
+    <div class="inv-col">${decisionHtml}</div>
+  </div>`;
 
-                <!-- TAB 2: Deep Reasoning -->
-                <div id="tab2" class="tab-content">
-                    <div class="grid-container">
-                        <div class="card col-12">
-                            <div class="card-header">Reasoning & Confidence</div>
-                            <div style="display:flex; gap: 40px; margin-bottom: 20px;">
-                                <div><span style="color:var(--text-secondary); font-size:0.8rem; display:block;">CONFIDENCE</span><strong style="font-size:1.2rem;">${(c.confidence * 100).toFixed(1)}%</strong></div>
-                                <div><span style="color:var(--text-secondary); font-size:0.8rem; display:block;">UNCERTAINTY</span><strong style="font-size:1.2rem;">${c.uncertainty_level.toUpperCase()}</strong></div>
-                            </div>
-                            
-                            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
-                                <div>
-                                    <h4 style="color:var(--accent-blue); margin-bottom:10px; font-size:0.9rem;">Why Suspicious</h4>
-                                    <ul class="list-group">
-                                        ${c.explanation && c.explanation.why_suspicious ? c.explanation.why_suspicious.map(r => `<li>${r}</li>`).join('') : '<li>No specific suspicious signals.</li>'}
-                                    </ul>
-                                </div>
-                                <div>
-                                    <h4 style="color:var(--accent-cyan); margin-bottom:10px; font-size:0.9rem;">Why Action / Guardrails</h4>
-                                    <ul class="list-group">
-                                        ${c.explanation && c.explanation.why_action ? c.explanation.why_action.map(r => `<li>${r}</li>`).join('') : '<li>No specific action reasoning.</li>'}
-                                    </ul>
-                                </div>
-                                <div>
-                                    <h4 style="color:var(--warning); margin-bottom:10px; font-size:0.9rem;">Why Not Certain / Stop</h4>
-                                    <ul class="list-group">
-                                        ${c.uncertainty_reasons.map(r => `<li>${r}</li>`).join('')}
-                                        ${c.evidence_gaps.map(g => `<li>Gap: ${g}</li>`).join('')}
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
+  requestAnimationFrame(()=>drawGraph(c));
+}
 
-                        <div class="card col-6">
-                            <div class="card-header">Supporting / Contradictory Evidence</div>
-                            <h4 style="color:var(--danger); margin-bottom:10px; font-size:0.85rem;">Supporting Findings</h4>
-                            <ul class="list-group">
-                                ${c.supporting_findings && c.supporting_findings.length > 0 ? c.supporting_findings.map(f => `<li>${f}</li>`).join('') : '<li>None</li>'}
-                            </ul>
-                            
-                            <h4 style="color:var(--success); margin-bottom:10px; font-size:0.85rem; margin-top:15px;">Contradictory Findings</h4>
-                            <ul class="list-group">
-                                ${c.contradictory_findings && c.contradictory_findings.length > 0 ? c.contradictory_findings.map(f => `<li>${f}</li>`).join('') : '<li>None</li>'}
-                            </ul>
-                        </div>
+/* ===== GRAPH DRAWING ===== */
+function drawGraph(c){
+  const wrap=document.getElementById('graph-canvas-wrap');
+  if(!wrap)return;
+  const canvas=document.getElementById('graph-canvas');
+  const W=wrap.clientWidth, H=wrap.clientHeight;
+  canvas.width=W*2;canvas.height=H*2;canvas.style.width=W+'px';canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(2,2);
 
-                        <div class="card col-6">
-                            <div class="card-header">GraphRAG Historical Precedents</div>
-                            <ul class="evidence-list" style="max-height: 400px; overflow-y: auto;">
-                                ${c.historical_evidence.length > 0 ? c.historical_evidence.map(h => `
-                                    <li class="evidence-item historical">
-                                        <div class="evidence-tag">[CLOSED CASE | ${h.case_id}]</div>
-                                        <div>Retrieved via GraphRAG: ${h.source}</div>
-                                    </li>
-                                `).join('') : '<li class="evidence-item">No historical precedents found for this entity.</li>'}
-                            </ul>
-                        </div>
-                    </div>
-                </div>
+  // Nodes
+  const cx=W/2, cy=H/2;
+  let nodes=[
+    {id:c.customer_id,label:c.customer_id,type:'Customer',x:cx,y:cy-100,r:24,color:'#58a6ff'},
+    {id:c.card_id,label:c.card_id,type:'Card',x:cx,y:cy,r:20,color:'#39d2c0'},
+    {id:String(c.transaction_id),label:'$'+(c.sar_data?c.sar_data.exposure_usd.toFixed(0):'?'),type:'Transaction',x:cx,y:cy+100,r:18,color:'#d29922'},
+    {id:c.case_id,label:c.case_id,type:'Case',x:cx-140,y:cy+50,r:20,color:'#da3633'}
+  ];
+  let edges=[
+    {from:c.customer_id,to:c.card_id,label:'HAS_CARD'},
+    {from:c.card_id,to:String(c.transaction_id),label:'USED_FOR'},
+    {from:String(c.transaction_id),to:c.case_id,label:'INVOLVES'}
+  ];
 
-                <!-- TAB 3: Compliance & Memory -->
-                <div id="tab3" class="tab-content">
-                    <div class="grid-container">
-                        <div class="card col-6">
-                            <div class="card-header">SAR Preparation & Compliance</div>
-                            <div class="stat-val" style="color: ${c.sar_data && c.sar_data.sar_required ? 'var(--danger)' : 'var(--success)'}">
-                                ${c.sar_data && c.sar_data.sar_required ? 'SAR PREPARATION REQUIRED' : 'SAR NOT REQUIRED'}
-                            </div>
-                            <div class="stat-sub" style="margin-bottom:15px;">Filing Status: ${c.sar_data ? c.sar_data.filing_status.toUpperCase() : 'N/A'} (Requires Human Approval)</div>
-                            
-                            <ul class="list-group">
-                                <li><strong>Exposure USD:</strong> $${c.sar_data ? c.sar_data.exposure_usd.toFixed(2) : '0.00'}</li>
-                                <li><strong>Rationale:</strong> ${c.sar_data ? c.sar_data.sar_rationale : 'N/A'}</li>
-                                <li><strong>Regulatory References:</strong> ${c.sar_data && c.sar_data.regulatory_references ? c.sar_data.regulatory_references.join(', ') : 'None'}</li>
-                            </ul>
-                            
-                            <div style="margin-top: 20px; padding: 10px; background: rgba(245, 158, 11, 0.1); border-left: 3px solid var(--warning); font-size: 0.8rem; color: #D1D5DB;">
-                                <strong>Compliance Note:</strong> This system automatically prepares Suspicious Activity Reports (SARs) according to internal policy thresholds. Final FinCEN filing always requires external human compliance officer approval.
-                            </div>
-                        </div>
+  // Historical cases
+  if(c.historical_evidence&&c.historical_evidence.length>0){
+    const maxH=Math.min(c.historical_evidence.length,4);
+    const startAngle=-Math.PI/4;
+    const spread=Math.PI/2/(maxH>1?maxH-1:1);
+    for(let i=0;i<maxH;i++){
+      const h=c.historical_evidence[i];
+      const angle=startAngle+spread*i;
+      const dist=150;
+      const hx=cx+140+Math.cos(angle)*dist*0.5;
+      const hy=cy-80+Math.sin(angle)*dist;
+      nodes.push({id:h.case_id,label:h.case_id,type:'History',x:hx,y:hy,r:14,color:'#bc8cff'});
+      edges.push({from:c.customer_id,to:h.case_id,label:'PRIOR'});
+    }
+  }
 
-                        <div class="card col-6">
-                            <div class="card-header">TigerGraph Writeback Status</div>
-                            <div class="stat-val" style="color: ${c.written_to_graph ? 'var(--accent-blue)' : 'var(--text-secondary)'}">
-                                ${c.written_to_graph ? 'SUCCESS' : 'PENDING / OFFLINE'}
-                            </div>
-                            <div class="stat-sub" style="margin-bottom:15px;">Case Vertex Persistence</div>
-                            
-                            <p style="font-size:0.85rem; color:#D1D5DB; line-height:1.5;">
-                                The Agentic Investigator persists completed case states, reasoning summaries, and compliance decisions back to the live TigerGraph cluster as a <strong>InvestigationCase</strong> vertex, establishing edges to the associated Transaction, Customer, and Card for future GraphRAG retrieval.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Switch back to tab1 on case change
-            switchTab('tab1');
-        }
+  const nodeMap={};
+  nodes.forEach(n=>nodeMap[n.id]=n);
 
-        window.onload = fetchCases;
-    </script>
+  // Grid
+  ctx.strokeStyle='rgba(48,54,61,0.4)';
+  ctx.lineWidth=0.5;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+  // Edges
+  edges.forEach(e=>{
+    const n1=nodeMap[e.from],n2=nodeMap[e.to];
+    if(!n1||!n2)return;
+    ctx.beginPath();
+    ctx.strokeStyle='rgba(110,118,129,0.5)';
+    ctx.lineWidth=1.5;
+    ctx.moveTo(n1.x,n1.y);ctx.lineTo(n2.x,n2.y);ctx.stroke();
+
+    // Edge label
+    const mx=(n1.x+n2.x)/2,my=(n1.y+n2.y)/2;
+    ctx.font='500 9px Inter,system-ui';
+    ctx.fillStyle='#6e7681';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(e.label,mx,my-6);
+  });
+
+  // Nodes
+  nodes.forEach(n=>{
+    // Glow
+    const grad=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r*2.5);
+    grad.addColorStop(0,n.color+'30');
+    grad.addColorStop(1,'transparent');
+    ctx.fillStyle=grad;
+    ctx.beginPath();ctx.arc(n.x,n.y,n.r*2.5,0,Math.PI*2);ctx.fill();
+
+    // Circle
+    ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+    ctx.fillStyle=n.color+'20';ctx.fill();
+    ctx.strokeStyle=n.color;ctx.lineWidth=2;ctx.stroke();
+
+    // Label
+    ctx.font='600 10px "JetBrains Mono",monospace';
+    ctx.fillStyle='#e6edf3';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(n.label,n.x,n.y);
+
+    // Type label below
+    ctx.font='500 9px Inter,system-ui';
+    ctx.fillStyle='#8b949e';
+    ctx.fillText(n.type,n.x,n.y+n.r+12);
+  });
+}
+
+/* ===== TAB 2: REASONING ===== */
+function renderReasoning(c){
+  const el=document.getElementById('t-reason');
+  let confPct=Math.round(c.confidence*100);
+
+  // Evidence by source
+  let evBySource={};
+  (c.current_evidence||[]).forEach(e=>{
+    let src=e.source_id.split(':')[0];
+    if(!evBySource[src])evBySource[src]=[];
+    evBySource[src].push(e);
+  });
+
+  let evHtml='';
+  Object.keys(evBySource).forEach(src=>{
+    evHtml+=`<div class="ev-head" style="margin-top:12px">${src.replace(/_/g,' ').toUpperCase()} (${evBySource[src].length})</div>`;
+    evBySource[src].forEach(e=>{
+      evHtml+=`<div class="ev-item">${e.statement}<div class="ev-source">${e.source_id}</div></div>`;
+    });
+  });
+
+  // Historical cases
+  let histHtml='';
+  // Extract historical case details from current_evidence
+  const histDetails={};
+  (c.current_evidence||[]).forEach(e=>{
+    const m=e.statement.match(/Case (CC-\\d+) \\(([^,]+), ([^,]+), Exposure: \\$(\\S+)\\)/);
+    if(m){histDetails[m[1]]={status:m[2],pattern:m[3],exposure:m[4]};}
+  });
+
+  (c.historical_evidence||[]).forEach(h=>{
+    const d=histDetails[h.case_id]||{};
+    const isFraud=d.status==='CONFIRMED_FRAUD';
+    const tagClass=isFraud?'fraud':'cleared';
+    const tagText=d.status?d.status.replace(/_/g,' '):'RELATED';
+    histHtml+=`
+    <div class="hist-case" onclick="this.classList.toggle('open')">
+      <div class="hist-case-head">
+        <span class="hist-case-id">${h.case_id}</span>
+        <span class="hist-case-tag ${tagClass}">${tagText}</span>
+      </div>
+      <div class="hist-case-meta">
+        ${d.pattern?'<span>'+d.pattern.replace(/_/g,' ')+'</span>':''}
+        ${d.exposure?'<span>$'+d.exposure+'</span>':''}
+      </div>
+      <div class="hist-case-detail">Retrieved via GraphRAG from bank case memory.<br>Source: ${h.source}</div>
+    </div>`;
+  });
+
+  el.innerHTML=`
+  <div class="metrics-row">
+    <div class="metric"><div class="metric-label">Confidence</div><div class="metric-value">${confPct}%</div></div>
+    <div class="metric"><div class="metric-label">Uncertainty</div><div class="metric-value" style="color:${c.uncertainty_level==='high'?'var(--amber)':'var(--tx-0)'}">${c.uncertainty_level.toUpperCase()}</div></div>
+    <div class="metric"><div class="metric-label">Evidence Items</div><div class="metric-value">${(c.current_evidence||[]).length}</div></div>
+    <div class="metric"><div class="metric-label">Tools Used</div><div class="metric-value">${c.tool_call_count}</div></div>
+    <div class="metric"><div class="metric-label">Prior Cases</div><div class="metric-value">${(c.historical_evidence||[]).length}</div></div>
+  </div>
+
+  <div class="reason-grid">
+    <div>
+      <div class="signal-group">
+        <div class="signal-head"><span class="sdot" style="background:var(--red)"></span> Strong Signals</div>
+        ${(c.supporting_findings||[]).map(f=>`<div class="signal-item">${f}</div>`).join('')||'<div class="signal-item" style="color:var(--tx-3)">None</div>'}
+      </div>
+      <div class="signal-group">
+        <div class="signal-head"><span class="sdot" style="background:var(--green)"></span> Counter-Signals</div>
+        ${(c.contradictory_findings||[]).map(f=>`<div class="signal-item">${f}</div>`).join('')||'<div class="signal-item" style="color:var(--tx-3)">None</div>'}
+      </div>
+    </div>
+    <div>
+      <div class="signal-group">
+        <div class="signal-head"><span class="sdot" style="background:var(--amber)"></span> Uncertainty Factors</div>
+        ${(c.uncertainty_reasons||[]).map(r=>`<div class="signal-item">${r}</div>`).join('')}
+        ${(c.evidence_gaps||[]).map(g=>`<div class="signal-item" style="color:var(--amber)">Gap: ${g}</div>`).join('')}
+      </div>
+      <div class="signal-group">
+        <div class="signal-head"><span class="sdot" style="background:var(--blue)"></span> Explanation</div>
+        ${c.explanation&&c.explanation.why_suspicious?(c.explanation.why_suspicious.map(r=>`<div class="signal-item">${r}</div>`).join('')):''}
+        ${c.explanation&&c.explanation.why_action?(c.explanation.why_action.map(r=>`<div class="signal-item" style="color:var(--tx-2)">${r}</div>`).join('')):''}
+      </div>
+    </div>
+    <div>
+      <div class="signal-head" style="margin-bottom:10px"><span class="sdot" style="background:var(--purple)"></span> GraphRAG Historical Precedents</div>
+      ${histHtml||'<div style="font-size:12px;color:var(--tx-3)">No historical cases found.</div>'}
+    </div>
+    <div>
+      <div class="evidence-section">
+        <div class="ev-head">Live Graph Evidence</div>
+        <div style="max-height:400px;overflow-y:auto">${evHtml}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ===== TAB 3: COMPLIANCE ===== */
+function renderCompliance(c){
+  const el=document.getElementById('t-comply');
+
+  // Policy rules from explanation
+  let policyRules=[];
+  if(c.explanation&&c.explanation.why_action){
+    c.explanation.why_action.forEach(a=>{
+      const m=a.match(/Policy Rules?: ([R\\d, ]+)/);
+      if(m){policyRules=m[1].split(',').map(s=>s.trim());}
+    });
+  }
+
+  // Lifecycle stages
+  const stages=['OPEN','INVESTIGATING','AWAITING_EVIDENCE','ACTION_PENDING_APPROVAL','EXECUTED','CLOSED'];
+  const currentIdx=stages.indexOf(c.lifecycle_state);
+
+  let lifecycleHtml='';
+  stages.forEach((s,i)=>{
+    let dotClass=i<currentIdx?'done':i===currentIdx?'current':'future';
+    lifecycleHtml+=`<div class="lf-step"><span class="lf-dot ${dotClass}"></span>${s.replace(/_/g,' ')}</div>`;
+    if(i<stages.length-1)lifecycleHtml+=`<div class="lf-line"></div>`;
+  });
+
+  el.innerHTML=`
+  <div class="compliance-grid">
+    <div class="compliance-section">
+      <div class="comp-head">Policy Evaluation</div>
+      ${policyRules.length>0?policyRules.map(r=>`<div class="policy-row"><span class="policy-check">&#10003;</span>${r}</div>`).join(''):'<div style="font-size:12px;color:var(--tx-3)">No policy rules explicitly recorded.</div>'}
+      <div style="margin-top:12px;font-size:11px;color:var(--tx-2)">
+        Approval Route: <strong>${c.approval_route||'auto'}</strong><br>
+        Approval Required: <strong>${c.approval_required?'Yes':'No'}</strong>
+      </div>
+    </div>
+
+    <div class="compliance-section">
+      <div class="comp-head">Case Lifecycle</div>
+      <div class="lifecycle-flow">${lifecycleHtml}</div>
+    </div>
+
+    <div class="compliance-section">
+      <div class="comp-head">TigerGraph Writeback</div>
+      ${c.written_to_graph?`
+        <div class="wb-row"><span class="wb-check">&#10003;</span> InvestigationCase / ${c.case_id}</div>
+        <div class="wb-row"><span class="wb-check">&#10003;</span> INVOLVES &rarr; ${c.transaction_id}</div>
+        <div class="wb-row"><span class="wb-check">&#10003;</span> ON_CARD &rarr; ${c.card_id}</div>
+        <div class="wb-row"><span class="wb-check">&#10003;</span> CONNECTED_TO &rarr; ${c.customer_id}</div>
+      `:`<div style="font-size:12px;color:var(--tx-3)">Writeback not performed (offline mode).</div>`}
+    </div>
+
+    <div class="compliance-section" style="grid-column:1/-1">
+      <div class="comp-head">SAR Preparation & Compliance</div>
+      <div class="sar-status" style="color:${c.sar_data&&c.sar_data.sar_required?'var(--red)':'var(--green)'}">${c.sar_data&&c.sar_data.sar_required?'SAR PREPARATION REQUIRED':'SAR NOT REQUIRED'}</div>
+      <div class="sar-detail">
+        <strong>Exposure:</strong> $${c.sar_data?c.sar_data.exposure_usd.toFixed(2):'0.00'} USD<br>
+        <strong>Status:</strong> ${c.sar_data?c.sar_data.sar_status:'N/A'}<br>
+        <strong>Rationale:</strong> ${c.sar_data?c.sar_data.sar_rationale:'N/A'}<br>
+        <strong>Regulatory References:</strong> ${c.sar_data&&c.sar_data.regulatory_references?c.sar_data.regulatory_references.join(', '):'None'}
+      </div>
+      <div class="comp-note">
+        This system prepares SAR documentation according to internal bank policy thresholds. All FinCEN filings require external human compliance officer review and approval before submission.
+      </div>
+    </div>
+  </div>`;
+}
+
+window.addEventListener('load',init);
+window.addEventListener('resize',()=>{
+  const c=allCases.find(x=>x.case_id===activeId);
+  if(c)drawGraph(c);
+});
+</script>
 </body>
 </html>"""
     return HTMLResponse(content=html_content)
