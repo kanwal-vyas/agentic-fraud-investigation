@@ -39,7 +39,6 @@ class CaseLifecycleManager:
         ],
         CaseLifecycleStatus.ACTION_PENDING_APPROVAL: [
             CaseLifecycleStatus.ACTION_EXECUTED,
-            CaseLifecycleStatus.RESOLVED,
             CaseLifecycleStatus.ESCALATED,
         ],
         CaseLifecycleStatus.ACTION_EXECUTED: [
@@ -135,14 +134,21 @@ class CaseLifecycleManager:
     def resolve_case(
         self,
         case: CaseMemoryRecord,
-        outcome: str,  # closed_fraud, closed_legitimate, escalated
+        outcome: str,  # RESOLVED_FRAUD, RESOLVED_BENIGN, ESCALATED
         summary: str = ""
     ) -> CaseMemoryRecord:
         """Resolves the case with a final outcome."""
+        if case.approval_required and case.execution_status == ActionExecutionStatus.PENDING_APPROVAL:
+            raise ValueError("Cannot resolve case while required action approval is pending.")
+
+        if outcome.upper() in ["RESOLVED_FRAUD", "RESOLVED_BENIGN", "CLOSED_FRAUD", "CLOSED_LEGITIMATE"]:
+            if case.approval_required and case.execution_status != ActionExecutionStatus.EXECUTED:
+                raise ValueError(f"Cannot set outcome {outcome} when action execution is {case.execution_status.value}")
+
         case.final_outcome = outcome
         if summary:
             case.summary = summary
         
-        target_status = CaseLifecycleStatus.ESCALATED if outcome == "escalated" else CaseLifecycleStatus.RESOLVED
+        target_status = CaseLifecycleStatus.ESCALATED if outcome.upper() == "ESCALATED" else CaseLifecycleStatus.RESOLVED
         self.transition_state(case, target_status, reason=f"Case resolved with outcome {outcome}")
         return case

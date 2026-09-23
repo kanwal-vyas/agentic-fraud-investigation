@@ -275,29 +275,28 @@ class AgenticFraudInvestigator:
         case_record.sar_data = sar_record
 
         # 8. Determine Final Outcome and State Resolution
-        if final_assessment.fraud_assessment.value == "likely_fraud":
-            final_outcome = "closed_fraud"
-        elif final_assessment.fraud_assessment.value == "likely_benign":
-            final_outcome = "closed_legitimate"
-        elif final_assessment.fraud_assessment.value == "suspicious_but_uncertain":
-            final_outcome = "escalated"
-        else:
-            final_outcome = "escalated"
-
-        case_record.final_outcome = final_outcome
         case_record.summary = "; ".join(explanation.why_suspicious) or "; ".join(explanation.why_action)
 
-
-        if case_record.status == CaseLifecycleStatus.ACTION_PENDING_APPROVAL:
+        if case_record.status == CaseLifecycleStatus.ACTION_PENDING_APPROVAL or (case_record.approval_required and case_record.execution_status != ActionExecutionStatus.EXECUTED):
+            case_record.final_outcome = "ACTION_PENDING_APPROVAL"
             # Remains in ACTION_PENDING_APPROVAL pending human authorization boundary
-            pass
-        elif final_outcome == "escalated":
+        elif case_record.status == CaseLifecycleStatus.AWAITING_EVIDENCE:
+            case_record.final_outcome = "AWAITING_CUSTOMER_EVIDENCE"
+            # Remains in AWAITING_EVIDENCE
+        elif final_assessment.fraud_assessment.value == "likely_fraud":
+            case_record.final_outcome = "RESOLVED_FRAUD"
             self.lifecycle_manager.transition_state(
-                case_record, CaseLifecycleStatus.ESCALATED, reason="Case escalated for analyst review"
+                case_record, CaseLifecycleStatus.RESOLVED, reason="Case resolved as RESOLVED_FRAUD"
+            )
+        elif final_assessment.fraud_assessment.value == "likely_benign":
+            case_record.final_outcome = "RESOLVED_BENIGN"
+            self.lifecycle_manager.transition_state(
+                case_record, CaseLifecycleStatus.RESOLVED, reason="Case resolved as RESOLVED_BENIGN"
             )
         else:
+            case_record.final_outcome = "ESCALATED"
             self.lifecycle_manager.transition_state(
-                case_record, CaseLifecycleStatus.RESOLVED, reason=f"Case resolved as {final_outcome}"
+                case_record, CaseLifecycleStatus.ESCALATED, reason="Case escalated for analyst review"
             )
 
         # 9. Link Related Historical Entities & Case IDs

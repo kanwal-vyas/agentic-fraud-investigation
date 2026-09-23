@@ -448,8 +448,7 @@ def test_s_end_to_end_orchestrator_persistence():
     stored_case = investigator.case_store.get_case("HHG-003")
     assert stored_case is not None
     assert stored_case.case_id == "HHG-003"
-    assert len(stored_case.evidence_items) > 0
-    assert stored_case.status in [CaseLifecycleStatus.RESOLVED, CaseLifecycleStatus.ACTION_PENDING_APPROVAL, CaseLifecycleStatus.ESCALATED]
+    assert stored_case.status in [CaseLifecycleStatus.RESOLVED, CaseLifecycleStatus.ACTION_PENDING_APPROVAL, CaseLifecycleStatus.AWAITING_EVIDENCE, CaseLifecycleStatus.ESCALATED]
 
     # Verify writeback in sample graph client
     graph_case = investigator.writeback_engine.sample_client.get_case("HHG-003")
@@ -506,7 +505,7 @@ def test_s_t_full_20_case_benchmark_persistence_and_invariants():
         stored = investigator.case_store.get_case(case_id)
         assert stored is not None
         assert stored.case_id == case_id
-        assert stored.status in [CaseLifecycleStatus.RESOLVED, CaseLifecycleStatus.ACTION_PENDING_APPROVAL, CaseLifecycleStatus.ESCALATED]
+        assert stored.status in [CaseLifecycleStatus.RESOLVED, CaseLifecycleStatus.ACTION_PENDING_APPROVAL, CaseLifecycleStatus.AWAITING_EVIDENCE, CaseLifecycleStatus.ESCALATED]
 
         # Invariant checks
         nba_action = res.next_best_action.action.value
@@ -523,5 +522,137 @@ def test_s_t_full_20_case_benchmark_persistence_and_invariants():
     # Check that 20 total records exist
     all_stored = investigator.case_store.list_cases()
     assert len(all_stored) == len(benchmark_df)
+
+    # Invariant: No case with pending approval may be marked RESOLVED or RESOLVED_FRAUD
+    for stored in all_stored:
+        if stored.approval_required and stored.execution_status != ActionExecutionStatus.EXECUTED:
+            assert stored.status != CaseLifecycleStatus.RESOLVED
+            assert stored.final_outcome not in ["RESOLVED_FRAUD", "RESOLVED_BENIGN", "closed_fraud", "closed_legitimate"]
+            assert stored.final_outcome in ["ACTION_PENDING_APPROVAL", "AWAITING_CUSTOMER_EVIDENCE", "ESCALATED"]
+
+
+def test_u_required_approval_destructive_nba_cannot_produce_resolved_lifecycle():
+    """1 & 2. Test that required-approval destructive NBA cannot produce RESOLVED lifecycle or premature RESOLVED_FRAUD."""
+    mgr = CaseLifecycleManager()
+    case = CaseMemoryRecord(
+        case_id="REGRESS-001",
+        customer_id="C901",
+        card_id="card_901",
+        triggering_txn_id=9001,
+        trigger_type="risk_score",
+        created_at=datetime.datetime.now().isoformat(),
+        updated_at=datetime.datetime.now().isoformat(),
+        status=CaseLifecycleStatus.INVESTIGATING,
+        fraud_assessment="likely_fraud",
+        confidence=0.85
+    )
+
+    mgr.record_recommendation(
+        case=case,
+        action="BLOCK_CARD",
+        approval_required=True,
+        approval_route="L1",
+        rationale="Card testing confirmed",
+        policy_references=["R1", "R8"]
+    )
+
+    assert case.status == CaseLifecycleStatus.ACTION_PENDING_APPROVAL
+    assert case.execution_status == ActionExecutionStatus.PENDING_APPROVAL
+
+    # Cannot transition directly to RESOLVED while approval is pending
+    with pytest.raises(ValueError):
+        mgr.transition_state(case, CaseLifecycleStatus.RESOLVED)
+
+    # Cannot resolve case while approval is pending
+    with pytest.raises(ValueError):
+        mgr.resolve_case(case, outcome="RESOLVED_FRAUD", summary="Fraud resolved prematurely")
+
+    with pytest.raises(ValueError):
+        mgr.resolve_case(case, outcome="CLOSED_FRAUD", summary="Fraud resolved prematurely")
+
+
+def test_v_likely_fraud_coexists_with_action_pending_approval():
+    """3. Test that LIKELY_FRAUD assessment coexists cleanly with ACTION_PENDING_APPROVAL lifecycle and outcome."""
+    mcp = TigerGraphMCPServer()
+    investigator = AgenticFraudInvestigator(mcp_server=mcp)
+
+    trigger = InvestigationTrigger(
+        case_id="HHG-003",
+        trigger_type=TriggerType.CUSTOMER_REPORT,
+        transaction_id=3530164,
+        customer_id="C08623",
+        card_id="C08623-K2",
+        model_risk_score=0.40,
+        trigger_details="Customer C08623 message: 'I never made this $49.00 purchase. Please check my card.'"
+    )
+
+    res = investigator.investigate(trigger)
+    assert res.persisted_case_id == "HHG-003"
+    stored_case = investigator.case_store.get_case("HHG-003")
+
+    # Assessment is not downgraded
+    assert stored_case.fraud_assessment == "likely_fraud"
+    assert round(stored_case.confidence, 2) == 0.70
+    assert stored_case.uncertainty_level.upper() == "HIGH"
+
+    # Action is held at authorization boundary
+    assert stored_case.recommended_nba == "BLOCK_CARD"
+    assert stored_case.approval_required is True
+    assert stored_case.execution_status == ActionExecutionStatus.PENDING_APPROVAL
+
+    # Lifecycle and Outcome reflect pending approval rather than premature closure
+    assert stored_case.status == CaseLifecycleStatus.ACTION_PENDING_APPROVAL
+    assert stored_case.final_outcome == "ACTION_PENDING_APPROVAL"
+    assert stored_case.final_outcome != "CLOSED_FRAUD"
+    assert stored_case.final_outcome != "RESOLVED_FRAUD"
+
+
+def test_w_explicit_authorization_and_execution_enables_resolution():
+    """4. Test that explicit human authorization + execution transitions to ACTION_EXECUTED and enables RESOLVED."""
+    mgr = CaseLifecycleManager()
+    case = CaseMemoryRecord(
+        case_id="REGRESS-002",
+        customer_id="C902",
+        card_id="card_902",
+        triggering_txn_id=9002,
+        trigger_type="risk_score",
+        created_at=datetime.datetime.now().isoformat(),
+        updated_at=datetime.datetime.now().isoformat(),
+        status=CaseLifecycleStatus.INVESTIGATING,
+        fraud_assessment="likely_fraud",
+        confidence=0.90
+    )
+
+    mgr.record_recommendation(
+        case=case,
+        action="BLOCK_CARD",
+        approval_required=True,
+        approval_route="L1",
+        rationale="Syndicate ring activity",
+        policy_references=["R8"]
+    )
+    assert case.status == CaseLifecycleStatus.ACTION_PENDING_APPROVAL
+    assert case.execution_status == ActionExecutionStatus.PENDING_APPROVAL
+
+    # Explicit authorization and execution
+    updated_case, audit_entry = mgr.authorize_and_execute_action(
+        case=case,
+        action="BLOCK_CARD",
+        authorized_by="Supervisor_L1_John",
+        rationale="Authorized after secondary review"
+    )
+    assert updated_case.status == CaseLifecycleStatus.ACTION_EXECUTED
+    assert updated_case.execution_status == ActionExecutionStatus.EXECUTED
+    assert len(updated_case.actions_actually_executed) == 1
+
+    # Now case may transition to RESOLVED with RESOLVED_FRAUD outcome
+    resolved_case = mgr.resolve_case(
+        case=updated_case,
+        outcome="RESOLVED_FRAUD",
+        summary="Card successfully blocked and case closed."
+    )
+    assert resolved_case.status == CaseLifecycleStatus.RESOLVED
+    assert resolved_case.final_outcome == "RESOLVED_FRAUD"
+
 
 

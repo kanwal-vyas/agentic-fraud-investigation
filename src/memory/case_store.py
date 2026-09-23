@@ -210,7 +210,7 @@ class InMemoryCaseStore(CaseStoreInterface):
 
                 relevance = min(1.0, relevance)
 
-                outcome_mapped = "confirmed_fraud" if c.final_outcome in ["closed_fraud", "likely_fraud", "confirmed_fraud"] else "cleared"
+                outcome_mapped = "confirmed_fraud" if c.final_outcome.lower() in ["closed_fraud", "likely_fraud", "confirmed_fraud", "resolved_fraud"] or c.fraud_assessment.lower() in ["likely_fraud", "confirmed_fraud"] and c.final_outcome.lower() in ["action_pending_approval"] else "cleared"
                 actions_str = ", ".join([a.action for a in c.actions_actually_executed]) if c.actions_actually_executed else c.recommended_nba
                 sim_reasons = []
                 if target_cust and c.customer_id == target_cust:

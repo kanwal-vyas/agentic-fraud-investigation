@@ -227,6 +227,15 @@ def run_benchmark():
             if not nba_refs.issubset(evaluated_rules):
                 policy_reference_mismatches += 1
 
+    # Lifecycle & Execution Invariant Verification
+    lifecycle_inconsistencies = 0
+    for res in results:
+        stored_c = investigator.case_store.get_case(res.case_id)
+        if stored_c:
+            if stored_c.approval_required and stored_c.execution_status != ActionExecutionStatus.EXECUTED:
+                if stored_c.status == CaseLifecycleStatus.RESOLVED or stored_c.final_outcome in ["RESOLVED_FRAUD", "RESOLVED_BENIGN", "closed_fraud", "closed_legitimate"]:
+                    lifecycle_inconsistencies += 1
+
     print("\n" + "=" * 80)
     print("STAGE 8 BENCHMARK & CASE PERSISTENCE METRICS SUMMARY")
     print("=" * 80)
@@ -239,6 +248,7 @@ def run_benchmark():
     print(f"Policy Reference Mismatches:        {policy_reference_mismatches} (Target: 0)")
     print(f"Unreferenced Destructive Actions:   {destructive_without_policy_ref} (Target: 0)")
     print(f"Denied Destructive Actions Emitted: {destructive_when_denied} (Target: 0)")
+    print(f"Lifecycle / Outcome Inconsistencies:{lifecycle_inconsistencies} (Target: 0)")
     print("=" * 80)
 
     if (
@@ -248,7 +258,8 @@ def run_benchmark():
         unsupported_rate == 0.0 and
         policy_reference_mismatches == 0 and
         destructive_without_policy_ref == 0 and
-        destructive_when_denied == 0
+        destructive_when_denied == 0 and
+        lifecycle_inconsistencies == 0
     ):
         print("[SUCCESS] Stage 8 Case Memory, Persistence & Graph Writeback Benchmark passed with 0 invariant violations!")
     else:
