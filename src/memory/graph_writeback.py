@@ -73,39 +73,39 @@ class CaseGraphWritebackEngine:
                     self.tg_client.upsert_edge("InvestigationCase", case.case_id, "CONNECTED_TO", "Card", cc)
                     entities_linked.append(f"ConnectedCard:{cc}")
 
-        else:
-            # Offline In-Memory Graph Index Upsert
-            if hasattr(self.sample_client, "upsert_case"):
-                self.sample_client.upsert_case(
-                    case_id=case.case_id,
-                    status=case.status.value,
-                    verdict=case.fraud_assessment,
-                    fraud_probability=float(case.confidence),
-                    pattern=pattern_str,
-                    pattern_description=case.nba_rationale or case.summary,
-                    exposure_usd=float(exposure_val),
-                    summary=case.summary,
-                    created_at=case.created_at or now
-                )
+        # Maintain local cache/mirror in sample_client
+        if hasattr(self.sample_client, "upsert_case"):
+            self.sample_client.upsert_case(
+                case_id=case.case_id,
+                status=case.status.value,
+                verdict=case.fraud_assessment,
+                fraud_probability=float(case.confidence),
+                pattern=pattern_str,
+                pattern_description=case.nba_rationale or case.summary,
+                exposure_usd=float(exposure_val),
+                summary=case.summary,
+                created_at=case.created_at or now
+            )
+        if mode != "LIVE":
             entities_linked.append(f"Case:{case.case_id}")
 
-            if case.triggering_txn_id:
-                txn_str = str(case.triggering_txn_id)
-                if hasattr(self.sample_client, "upsert_edge"):
-                    self.sample_client.upsert_edge("Case", case.case_id, "INVOLVES", "Transaction", txn_str)
-                entities_linked.append(f"Transaction:{txn_str}")
+        if case.triggering_txn_id and mode != "LIVE":
+            txn_str = str(case.triggering_txn_id)
+            if hasattr(self.sample_client, "upsert_edge"):
+                self.sample_client.upsert_edge("Case", case.case_id, "INVOLVES", "Transaction", txn_str)
+            entities_linked.append(f"Transaction:{txn_str}")
 
-            if case.card_id:
-                if hasattr(self.sample_client, "upsert_edge"):
-                    self.sample_client.upsert_edge("Case", case.case_id, "ON_CARD", "Card", case.card_id)
-                entities_linked.append(f"Card:{case.card_id}")
+        if case.card_id and mode != "LIVE":
+            if hasattr(self.sample_client, "upsert_edge"):
+                self.sample_client.upsert_edge("Case", case.case_id, "ON_CARD", "Card", case.card_id)
+            entities_linked.append(f"Card:{case.card_id}")
 
-            connected_cards = case.related_entities.get("cards", [])
-            for cc in connected_cards:
-                if cc != case.card_id:
-                    if hasattr(self.sample_client, "upsert_edge"):
-                        self.sample_client.upsert_edge("Case", case.case_id, "CONNECTED_TO", "Card", cc)
-                    entities_linked.append(f"ConnectedCard:{cc}")
+        connected_cards = case.related_entities.get("cards", [])
+        for cc in connected_cards:
+            if cc != case.card_id and mode != "LIVE":
+                if hasattr(self.sample_client, "upsert_edge"):
+                    self.sample_client.upsert_edge("Case", case.case_id, "CONNECTED_TO", "Card", cc)
+                entities_linked.append(f"ConnectedCard:{cc}")
 
         case.written_to_graph = True
         case.graph_case_id = case.case_id

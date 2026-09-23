@@ -54,17 +54,34 @@ class TigerGraphInvestigationTools:
         else:
             try:
                 res = self.client.run_installed_query("get_transaction", {"txn": tid})
-                if not res or not res[0].get("Start"):
+                if not res:
                     return None
-                s_item = res[0]["Start"][0]
+                res_dict = {}
+                for item in res:
+                    if isinstance(item, dict):
+                        res_dict.update(item)
+                
+                start_list = res_dict.get("Start", [])
+                if not start_list:
+                    return None
+                
+                s_item = start_list[0]
                 s = s_item.get("attributes", {})
-                c_item = res[0].get("CardOwner", [{}])[0]
+                
+                c_list = res_dict.get("CardOwner", [])
+                c_item = c_list[0] if c_list else {}
                 c = c_item.get("attributes", {})
-                cust_item = res[0].get("CustomerOwner", [{}])[0]
+                
+                cust_list = res_dict.get("CustomerOwner", [])
+                cust_item = cust_list[0] if cust_list else {}
                 cust = cust_item.get("attributes", {})
-                dev_item = res[0].get("DeviceUsed", [{}])[0]
+                
+                dev_list = res_dict.get("DeviceUsed", [])
+                dev_item = dev_list[0] if dev_list else {}
                 dev = dev_item.get("attributes", {})
-                em_item = res[0].get("EmailUsed", [{}])[0]
+                
+                em_list = res_dict.get("EmailUsed", [])
+                em_item = em_list[0] if em_list else {}
                 em = em_item.get("attributes", {})
                 
                 raw_prof = clean_entity_id(dev.get("profile_id", "") or dev_item.get("v_id", ""))
@@ -73,14 +90,16 @@ class TigerGraphInvestigationTools:
                 return TransactionDetail(
                     txn_id=str(s.get("txn_id") or s_item.get("v_id", tid)),
                     amount=float(s.get("amount", 0.0)),
-                    ts=str(s.get("ts_str", "")),
+                    ts=str(s.get("ts_str", "") or s.get("ts", "")),
                     channel=str(s.get("channel", "in_person")),
                     risk_score=float(s.get("risk_score", 0.0)),
                     product_cd=str(s.get("product_cd", "")),
                     addr1=str(s.get("addr1", "")),
                     addr2=str(s.get("addr2", "87.0")),
                     card_id=str(c.get("card_id", "") or c_item.get("v_id", "")),
-                    customer_id=str(cust.get("customer_id", "") or cust_item.get("v_id", "")),
+                    customer_id=str(cust.get("customer_id", "") or cust_item.get("v_id", "") or c.get("customer_id", "")),
+                    card_network=str(c.get("card_network", "unknown")),
+                    card_type=str(c.get("card_type", "unknown")),
                     profile_id=prof_id,
                     email_domain=str(em.get("domain", "") or em_item.get("v_id", "")),
                 )
@@ -95,15 +114,19 @@ class TigerGraphInvestigationTools:
         else:
             txns = []
             try:
-                res = self.client.run_installed_query("get_customer_transaction_history", {"cust": cid, "limit_count": limit})
-                for t_item in res[0].get("Txns", []):
+                res = self.client.run_installed_query("get_customer_transaction_history", {"cust": (cid, "Customer"), "limit_count": limit})
+                res_dict = {}
+                for item in res:
+                    if isinstance(item, dict):
+                        res_dict.update(item)
+                for t_item in res_dict.get("Txns", []):
                     t_attr = t_item.get("attributes", {})
                     raw_prof = clean_entity_id(t_attr.get("profile_id", "") or t_item.get("v_id", ""))
                     prof_id = raw_prof if is_valid_entity_id(raw_prof, "DeviceProfile") else ""
                     txns.append(TransactionDetail(
                         txn_id=str(t_attr.get("txn_id") or t_item.get("v_id", "")),
                         amount=float(t_attr.get("amount", 0.0)),
-                        ts=str(t_attr.get("ts_str", "")),
+                        ts=str(t_attr.get("ts_str", "") or t_attr.get("ts", "")),
                         channel=str(t_attr.get("channel", "")),
                         risk_score=float(t_attr.get("risk_score", 0.0)),
                         product_cd=str(t_attr.get("product_cd", "")),
@@ -153,26 +176,30 @@ class TigerGraphInvestigationTools:
             card_type = "unknown"
             cust_id = ""
             try:
-                res = self.client.run_installed_query("get_card_transaction_history", {"card_node": cid, "limit_count": limit})
-                for t_item in res[0].get("Txns", []):
+                res = self.client.run_installed_query("get_card_transaction_history", {"card_node": (cid, "Card"), "limit_count": limit})
+                res_dict = {}
+                for item in res:
+                    if isinstance(item, dict):
+                        res_dict.update(item)
+                for t_item in res_dict.get("Txns", []):
                     t_attr = t_item.get("attributes", {})
                     txns.append(TransactionDetail(
                         txn_id=str(t_attr.get("txn_id") or t_item.get("v_id", "")),
                         amount=float(t_attr.get("amount", 0.0)),
-                        ts=str(t_attr.get("ts_str", "")),
+                        ts=str(t_attr.get("ts_str", "") or t_attr.get("ts", "")),
                         channel=str(t_attr.get("channel", "")),
                         risk_score=float(t_attr.get("risk_score", 0.0)),
                         product_cd=str(t_attr.get("product_cd", "")),
                         card_id=cid,
                         customer_id="",
                     ))
-                if res and res[0].get("Start"):
-                    c_item = res[0].get("Start", [{}])[0]
+                if res_dict.get("Start"):
+                    c_item = res_dict["Start"][0]
                     c_attr = c_item.get("attributes", {})
                     issuer_code = int(c_attr.get("issuer_code", 0))
                     network = str(c_attr.get("card_network", "unknown"))
                     card_type = str(c_attr.get("card_type", "unknown"))
-                    cust_id = str(c_attr.get("customer_id", ""))
+                    cust_id = str(c_attr.get("customer_id", "") or c_item.get("v_id", "").split("-")[0])
             except Exception:
                 pass
 
@@ -200,10 +227,12 @@ class TigerGraphInvestigationTools:
             nodes = [GraphNode(id=n["id"], type=n["type"], attributes=n.get("attributes", {})) for n in data["nodes"]]
             edges = [GraphEdge(source=e["source"], target=e["target"], type=e["type"]) for e in data["edges"]]
         else:
-            res = self.client.run_installed_query("get_transaction_neighborhood", {"txn": tid, "max_hops": max_hops})
-            nodes, edges = [], []
-            # Extract nodes and edges from GSQL result structures
-            nodes.append(GraphNode(id=tid, type="Transaction", attributes={}))
+            try:
+                res = self.client.run_installed_query("get_transaction_neighborhood", {"txn": (tid, "Transaction"), "max_hops": max_hops})
+                nodes, edges = [], []
+                nodes.append(GraphNode(id=tid, type="Transaction", attributes={}))
+            except Exception:
+                nodes, edges = [], []
         return NeighborhoodEvidence(center_txn_id=tid, nodes=nodes, edges=edges)
 
     def find_shared_devices(self, profile_id: str) -> SharedDeviceEvidence:
@@ -223,10 +252,16 @@ class TigerGraphInvestigationTools:
             return SharedDeviceEvidence.model_validate(data)
         else:
             try:
-                res = self.client.run_installed_query("find_shared_devices", {"dev": cleaned_pid})
-                d_attr = res[0].get("Start", [{}])[0].get("attributes", {})
-                cards = [clean_entity_id(c.get("attributes", {}).get("card_id") or c.get("v_id")) for c in res[0].get("Cards", []) if clean_entity_id(c.get("attributes", {}).get("card_id") or c.get("v_id"))]
-                custs = [clean_entity_id(cu.get("attributes", {}).get("customer_id") or cu.get("v_id")) for cu in res[0].get("Customers", []) if clean_entity_id(cu.get("attributes", {}).get("customer_id") or cu.get("v_id"))]
+                res = self.client.run_installed_query("find_shared_devices", {"dev": (cleaned_pid, "DeviceProfile")})
+                res_dict = {}
+                for item in res:
+                    if isinstance(item, dict):
+                        res_dict.update(item)
+                
+                start_list = res_dict.get("Start", [])
+                d_attr = start_list[0].get("attributes", {}) if start_list else {}
+                cards = [clean_entity_id(c.get("attributes", {}).get("card_id") or c.get("v_id")) for c in res_dict.get("Cards", []) if clean_entity_id(c.get("attributes", {}).get("card_id") or c.get("v_id"))]
+                custs = [clean_entity_id(cu.get("attributes", {}).get("customer_id") or cu.get("v_id")) for cu in res_dict.get("Customers", []) if clean_entity_id(cu.get("attributes", {}).get("customer_id") or cu.get("v_id"))]
                 return SharedDeviceEvidence(
                     profile_id=cleaned_pid,
                     device_info=str(d_attr.get("device_info", "")),
@@ -380,8 +415,15 @@ class TigerGraphInvestigationTools:
         else:
             cases = []
             try:
-                res = self.client.run_installed_query("get_historical_cases", {"cust": customer_id or "", "top_k": top_k})
-                for c_item in res[0].get("DirectCases", []):
+                cust_param = (str(customer_id).strip(), "Customer") if customer_id else ("", "Customer")
+                res = self.client.run_installed_query("get_historical_cases", {"cust": cust_param, "top_k": top_k})
+                res_dict = {}
+                for item in res:
+                    if isinstance(item, dict):
+                        res_dict.update(item)
+                
+                # Direct cases
+                for c_item in res_dict.get("DirectCases", []):
                     attr = c_item.get("attributes", {})
                     case_id = str(attr.get("case_id") or c_item.get("v_id", ""))
                     cases.append(HistoricalCaseEvidence(
@@ -397,6 +439,25 @@ class TigerGraphInvestigationTools:
                         analyst_notes=str(attr.get("analyst_notes", "")),
                         similarity_reason="Direct historical case on customer card",
                     ))
+                
+                # Connected cases
+                for c_item in res_dict.get("ConnectedCases", []):
+                    attr = c_item.get("attributes", {})
+                    case_id = str(attr.get("case_id") or c_item.get("v_id", ""))
+                    if not any(c.case_id == case_id for c in cases):
+                        cases.append(HistoricalCaseEvidence(
+                            case_id=case_id,
+                            customer_id=str(attr.get("customer_id", "")),
+                            card_id=str(attr.get("card_id", "")),
+                            opened_at=str(attr.get("opened_at", "")),
+                            closed_at=str(attr.get("closed_at", "")),
+                            outcome=str(attr.get("outcome", "")),
+                            pattern=str(attr.get("pattern", "")),
+                            exposure_usd=float(attr.get("exposure_usd", 0.0)),
+                            n_txns=int(attr.get("n_txns", 1)),
+                            analyst_notes=str(attr.get("analyst_notes", "")),
+                            similarity_reason="Connected historical case via shared device/entity",
+                        ))
             except Exception:
                 pass
             return cases

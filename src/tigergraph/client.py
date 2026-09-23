@@ -47,6 +47,36 @@ class TigerGraphClient:
                     pass
         return self._conn
 
+    def reset_connection(self) -> tg.TigerGraphConnection:
+        """Closes and resets the active TigerGraphConnection session."""
+        self._conn = None
+        return self.get_connection()
+
+    def execute_with_retry(
+        self,
+        func: Any,
+        *args,
+        max_retries: int = 5,
+        initial_backoff: float = 1.0,
+        **kwargs
+    ) -> Any:
+        """
+        Executes a callable with automatic reconnection and exponential backoff retry
+        for handling transient network, socket, or DNS errors.
+        """
+        last_err = None
+        for attempt in range(max_retries):
+            try:
+                conn = self.get_connection()
+                return func(conn, *args, **kwargs)
+            except Exception as e:
+                last_err = e
+                backoff = min(30.0, initial_backoff * (2 ** attempt))
+                print(f"[!] TigerGraph operation failed (attempt {attempt+1}/{max_retries}): {e}. Retrying in {backoff:.1f}s...")
+                time.sleep(backoff)
+                self.reset_connection()
+        raise last_err
+
     def is_connected(self) -> bool:
         """Returns True if the connection to TigerGraph is alive."""
         return bool(self.ping().get("connected", False))
@@ -103,4 +133,19 @@ class TigerGraphClient:
             target_vertex_type,
             target_vertex_id,
             attributes=attributes or {},
+        )
+
+    def upsert_edges(
+        self,
+        source_vertex_type: str,
+        edge_type: str,
+        target_vertex_type: str,
+        edges_data: List[Any],
+    ) -> Any:
+        conn = self.get_connection()
+        return conn.upsertEdges(
+            source_vertex_type,
+            edge_type,
+            target_vertex_type,
+            edges_data,
         )
