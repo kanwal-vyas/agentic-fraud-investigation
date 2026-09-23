@@ -134,3 +134,70 @@ def test_live_case_writeback_mock():
     
     mock_live_client.upsert_vertex.assert_called_once()
     assert mock_live_client.upsert_edge.call_count >= 2
+
+def test_get_historical_cases_customer_id_only():
+    mock_client = MagicMock(spec=TigerGraphClient)
+    mock_client.run_installed_query.return_value = [
+        {"DirectCases": [{"v_id": "CC-101", "attributes": {"customer_id": "C001", "card_id": "C001-K1", "outcome": "confirmed_fraud", "pattern": "card_testing", "exposure_usd": 150.0, "n_txns": 2, "analyst_notes": "Test case"}}]},
+        {"ConnectedCases": []}
+    ]
+    tools = TigerGraphInvestigationTools(tg_client=mock_client)
+    cases = tools.get_historical_cases(customer_id="C001", top_k=5)
+    assert len(cases) == 1
+    assert cases[0].case_id == "CC-101"
+    assert cases[0].customer_id == "C001"
+    mock_client.run_installed_query.assert_called_once_with("get_historical_cases", {"cust": ("C001", "Customer"), "top_k": 5})
+
+def test_get_historical_cases_card_id_resolution():
+    mock_client = MagicMock(spec=TigerGraphClient)
+    # 1. get_card_transaction_history called to resolve card -> customer
+    # 2. get_historical_cases called with resolved customer
+    def side_effect(query_name, params):
+        if query_name == "get_card_transaction_history":
+            return [
+                {"Start": [{"v_id": "C001-K1", "attributes": {"customer_id": "C001", "issuer_code": 1000, "card_network": "visa", "card_type": "credit"}}]},
+                {"Txns": []}
+            ]
+        elif query_name == "get_historical_cases":
+            return [
+                {"DirectCases": [{"v_id": "CC-101", "attributes": {"customer_id": "C001", "card_id": "C001-K1", "outcome": "confirmed_fraud", "pattern": "card_testing", "exposure_usd": 150.0, "n_txns": 2, "analyst_notes": "Resolved via card"}}]},
+                {"ConnectedCases": []}
+            ]
+        return []
+
+    mock_client.run_installed_query.side_effect = side_effect
+    tools = TigerGraphInvestigationTools(tg_client=mock_client)
+    cases = tools.get_historical_cases(card_id="C001-K1", top_k=5)
+    assert len(cases) == 1
+    assert cases[0].case_id == "CC-101"
+    assert cases[0].customer_id == "C001"
+    assert mock_client.run_installed_query.call_count == 2
+
+def test_get_historical_cases_both_customer_and_card():
+    mock_client = MagicMock(spec=TigerGraphClient)
+    mock_client.run_installed_query.return_value = [
+        {"DirectCases": [{"v_id": "CC-202", "attributes": {"customer_id": "C002", "card_id": "C002-K1", "outcome": "cleared", "pattern": "none", "exposure_usd": 0.0, "n_txns": 1, "analyst_notes": "Both supplied"}}]},
+        {"ConnectedCases": []}
+    ]
+    tools = TigerGraphInvestigationTools(tg_client=mock_client)
+    cases = tools.get_historical_cases(customer_id="C002", card_id="C002-K1", top_k=5)
+    assert len(cases) == 1
+    assert cases[0].case_id == "CC-202"
+    # Should use customer_id directly without needing card history query
+    mock_client.run_installed_query.assert_called_once_with("get_historical_cases", {"cust": ("C002", "Customer"), "top_k": 5})
+
+def test_get_historical_cases_unknown_card_id():
+    mock_client = MagicMock(spec=TigerGraphClient)
+    mock_client.run_installed_query.return_value = [{"Start": []}, {"Txns": []}]
+    tools = TigerGraphInvestigationTools(tg_client=mock_client)
+    cases = tools.get_historical_cases(card_id="UNKNOWN-CARD", top_k=5)
+    assert cases == []
+
+def test_get_historical_cases_sample_parity():
+    from src.tigergraph.sample_client import SampleGraphClient
+    sample_tools = TigerGraphInvestigationTools(tg_client=SampleGraphClient())
+    cases_cust = sample_tools.get_historical_cases(customer_id="C08623", top_k=5)
+    cases_card = sample_tools.get_historical_cases(card_id="C08623-K2", top_k=5)
+    assert len(cases_cust) > 0
+    assert len(cases_card) > 0
+

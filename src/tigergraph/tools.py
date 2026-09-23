@@ -413,9 +413,19 @@ class TigerGraphInvestigationTools:
             cases_raw = self.client.get_historical_cases(customer_id, card_id, pattern, top_k=top_k)
             return [HistoricalCaseEvidence.model_validate(c) for c in cases_raw]
         else:
+            resolved_cust_id = str(customer_id).strip() if customer_id else ""
+            if not resolved_cust_id and card_id:
+                # Dynamically resolve card_id -> customer_id via live graph card history
+                card_hist = self.get_card_history(str(card_id).strip(), limit=1)
+                if card_hist and card_hist.customer_id:
+                    resolved_cust_id = card_hist.customer_id
+
+            if not resolved_cust_id:
+                return []
+
             cases = []
             try:
-                cust_param = (str(customer_id).strip(), "Customer") if customer_id else ("", "Customer")
+                cust_param = (resolved_cust_id, "Customer")
                 res = self.client.run_installed_query("get_historical_cases", {"cust": cust_param, "top_k": top_k})
                 res_dict = {}
                 for item in res:
@@ -426,6 +436,9 @@ class TigerGraphInvestigationTools:
                 for c_item in res_dict.get("DirectCases", []):
                     attr = c_item.get("attributes", {})
                     case_id = str(attr.get("case_id") or c_item.get("v_id", ""))
+                    c_pattern = str(attr.get("pattern", ""))
+                    if pattern and c_pattern != pattern:
+                        continue
                     cases.append(HistoricalCaseEvidence(
                         case_id=case_id,
                         customer_id=str(attr.get("customer_id", "")),
@@ -433,7 +446,7 @@ class TigerGraphInvestigationTools:
                         opened_at=str(attr.get("opened_at", "")),
                         closed_at=str(attr.get("closed_at", "")),
                         outcome=str(attr.get("outcome", "")),
-                        pattern=str(attr.get("pattern", "")),
+                        pattern=c_pattern,
                         exposure_usd=float(attr.get("exposure_usd", 0.0)),
                         n_txns=int(attr.get("n_txns", 1)),
                         analyst_notes=str(attr.get("analyst_notes", "")),
@@ -444,6 +457,9 @@ class TigerGraphInvestigationTools:
                 for c_item in res_dict.get("ConnectedCases", []):
                     attr = c_item.get("attributes", {})
                     case_id = str(attr.get("case_id") or c_item.get("v_id", ""))
+                    c_pattern = str(attr.get("pattern", ""))
+                    if pattern and c_pattern != pattern:
+                        continue
                     if not any(c.case_id == case_id for c in cases):
                         cases.append(HistoricalCaseEvidence(
                             case_id=case_id,
@@ -452,7 +468,7 @@ class TigerGraphInvestigationTools:
                             opened_at=str(attr.get("opened_at", "")),
                             closed_at=str(attr.get("closed_at", "")),
                             outcome=str(attr.get("outcome", "")),
-                            pattern=str(attr.get("pattern", "")),
+                            pattern=c_pattern,
                             exposure_usd=float(attr.get("exposure_usd", 0.0)),
                             n_txns=int(attr.get("n_txns", 1)),
                             analyst_notes=str(attr.get("analyst_notes", "")),
@@ -460,7 +476,7 @@ class TigerGraphInvestigationTools:
                         ))
             except Exception:
                 pass
-            return cases
+            return cases[:top_k] if top_k else cases
 
     def find_connected_cards(self, card_id: str) -> ConnectedCardsEvidence:
         card_hist = self.get_card_history(card_id, limit=50)
