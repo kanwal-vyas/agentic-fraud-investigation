@@ -1037,22 +1037,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg-page);color:var(--tx-p
       </div>
     </div>
 
-    <!-- QUICK EXPLORER SECTION -->
-    <div class="overview-explorer-section">
-      <div class="oe-header">
-        <div>
-          <div class="oe-title">BENCHMARK CASES EXPLORER</div>
-          <div class="oe-sub">Select any case below to launch Case Deep Dive or run live with the autonomous agent</div>
-        </div>
-        <button class="btn-hero-secondary" onclick="switchTopView('benchmark')" style="font-size:11px;padding:6px 14px">
-          View All Details &rarr;
-        </button>
-      </div>
-      <div class="oe-grid" id="ov-cases-grid">
-        <!-- Rendered via JS -->
-      </div>
-    </div>
-
   </div>
 </div>
 
@@ -1258,6 +1242,19 @@ html,body{height:100%;overflow:hidden;background:var(--bg-page);color:var(--tx-p
       <div class="la-subtitle">Comprehensive analytical audit across all 20 benchmark test cases (HHG-001 through HHG-020). Strict separation of model scores, Bayesian confidence, uncertainty, policy guardrails, and execution boundaries.</div>
     </div>
 
+    <!-- BENCHMARK CASES EXPLORER -->
+    <div class="overview-explorer-section">
+      <div class="oe-header">
+        <div>
+          <div class="oe-title">BENCHMARK CASES EXPLORER</div>
+          <div class="oe-sub">Select any case below to launch Case Deep Dive or run live with the autonomous agent</div>
+        </div>
+      </div>
+      <div class="oe-grid" id="bm-cases-grid">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
     <div class="bm-table-wrap">
       <table class="bm-table" id="bm-summary-table">
         <thead>
@@ -1368,7 +1365,7 @@ async function init(){
     renderNav();
     populateLiveAgentSelect();
     populateBenchmarkTable();
-    populateOverviewGrid();
+    populateBenchmarkGrid();
 
     // Check URL parameters for explicit case or view
     const params = new URLSearchParams(window.location.search);
@@ -1981,9 +1978,9 @@ function switchTopView(viewId, updateUrl = true){
   }
 }
 
-/* === OVERVIEW CASES GRID === */
-function populateOverviewGrid(){
-  const grid = document.getElementById('ov-cases-grid');
+/* === BENCHMARK CASES EXPLORER GRID === */
+function populateBenchmarkGrid(){
+  const grid = document.getElementById('bm-cases-grid');
   if(!grid) return;
   grid.innerHTML = '';
   allCases.forEach(c => {
