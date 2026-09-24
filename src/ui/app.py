@@ -64,23 +64,23 @@ def index_page():
   --tx-secondary: #6f6073;
   --tx-muted: #8c7e90;
   --tx-faint: #ad9eb1;
-  --danger: #a83d61;
-  --danger-dim: rgba(168, 61, 97, .08);
-  --warning: #c05a7a;
-  --warning-dim: rgba(192, 90, 122, .08);
-  --success: #385e44;
-  --success-dim: rgba(56, 94, 68, .08);
-  --info: #6d3b72;
-  --info-dim: rgba(109, 59, 114, .08);
-  --history: #8a64a3;
-  --history-dim: rgba(138, 100, 163, .08);
-  --node-customer: #6d3b72;
-  --node-card: #9b628f;
-  --node-transaction: #c0945a;
-  --node-case: #a83d61;
-  --node-history: #8a64a3;
-  --graph-edge: #dcc9dc;
-  --graph-edge-hover: #b59cb5;
+  --danger: #c6284a;
+  --danger-dim: rgba(198, 40, 74, .08);
+  --warning: #c58a00;
+  --warning-dim: rgba(197, 138, 0, .08);
+  --success: #2e7d52;
+  --success-dim: rgba(46, 125, 82, .08);
+  --info: #3b82c4;
+  --info-dim: rgba(59, 130, 196, .08);
+  --history: #8064a2;
+  --history-dim: rgba(128, 100, 162, .08);
+  --node-customer: #3b82c4;
+  --node-card: #2a9d8f;
+  --node-transaction: #d8902f;
+  --node-case: #c94c5c;
+  --node-history: #8064a2;
+  --graph-edge: #c2b0c2;
+  --graph-edge-hover: #a692a6;
   --graph-node-fill-opacity: 0.12;
   --graph-label-bg: #fff9fd;
   --tooltip-bg: #fff9fd;
@@ -109,23 +109,23 @@ def index_page():
   --tx-secondary: #cbb7c4;
   --tx-muted: #9f8795;
   --tx-faint: #7a6372;
-  --danger: #e06a78;
-  --danger-dim: rgba(224, 106, 120, .12);
-  --warning: #e0a15a;
-  --warning-dim: rgba(224, 161, 90, .12);
-  --success: #78b58d;
-  --success-dim: rgba(120, 181, 141, .12);
-  --info: #b77bc0;
-  --info-dim: rgba(183, 123, 192, .12);
-  --history: #b58ad0;
-  --history-dim: rgba(181, 138, 208, .12);
-  --node-customer: #b77bc0;
-  --node-card: #c88bb2;
-  --node-transaction: #e0a15a;
-  --node-case: #d65c83;
-  --node-history: #b58ad0;
-  --graph-edge: #5b394b;
-  --graph-edge-hover: #9f8795;
+  --danger: #f05d78;
+  --danger-dim: rgba(240, 93, 120, .12);
+  --warning: #e5b84b;
+  --warning-dim: rgba(229, 184, 75, .12);
+  --success: #6fcf8b;
+  --success-dim: rgba(111, 207, 139, .12);
+  --info: #569cd6;
+  --info-dim: rgba(86, 156, 214, .12);
+  --history: #a885c9;
+  --history-dim: rgba(168, 133, 201, .12);
+  --node-customer: #569cd6;
+  --node-card: #4ec9b0;
+  --node-transaction: #e5a85b;
+  --node-case: #e06c75;
+  --node-history: #a885c9;
+  --graph-edge: #634857;
+  --graph-edge-hover: #8c6d80;
   --graph-node-fill-opacity: 0.15;
   --graph-label-bg: #351d2b;
   --tooltip-bg: #402235;
@@ -305,7 +305,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg-page);color:var(--tx-p
 .svg-node{cursor:pointer}
 .svg-node-circle{stroke-width:2px;transition:all 0.2s}
 .svg-node:hover .svg-node-circle{filter:brightness(1.15);stroke-width:3px}
-.svg-node.selected .svg-node-circle{stroke:var(--selection-ring) !important;stroke-dasharray:4;animation:dash 10s linear infinite}
+.svg-node.selected .svg-node-circle{stroke-width:3px !important;stroke-dasharray:4;animation:dash 10s linear infinite;filter:brightness(1.15)}
 @keyframes dash { to { stroke-dashoffset: 100; } }
 .svg-node-label{fill:var(--tx-primary);font-size:11px;font-family:var(--font-mono);font-weight:500;text-anchor:middle;pointer-events:none}
 .svg-node-sub{fill:var(--tx-muted);font-size:9px;font-family:var(--font-sans);text-anchor:middle;pointer-events:none}
