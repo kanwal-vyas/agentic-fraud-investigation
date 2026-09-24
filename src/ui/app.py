@@ -8,7 +8,8 @@ from typing import Dict, Any, Optional
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from src.agent.orchestrator import AgenticFraudInvestigator
 from src.models.agent import InvestigationTrigger, TriggerType, InvestigationResult
 from src.mcp.server import TigerGraphMCPServer
@@ -20,6 +21,32 @@ app = FastAPI(
     description="Interactive Agentic Fraud Investigation UI for Hackathon Submission",
     version="2.0.0"
 )
+
+ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
+if os.path.exists(ASSETS_DIR):
+    app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
+
+@app.get("/aegis-medusa-emblem.png")
+@app.get("/src/ui/assets/aegis-medusa-emblem.png")
+@app.get("/src/ui/aegis-medusa-emblem.png")
+def get_aegis_emblem():
+    p = os.path.join(os.path.dirname(__file__), "assets", "aegis-medusa-emblem.png")
+    if not os.path.exists(p):
+        p = os.path.join(os.path.dirname(__file__), "aegis-medusa-emblem.png")
+    if os.path.exists(p):
+        return FileResponse(p, media_type="image/png")
+    raise HTTPException(status_code=404, detail="AEGIS Medusa emblem not found")
+
+@app.get("/aegis-header-emblem.png")
+@app.get("/src/ui/assets/aegis-header-emblem.png")
+@app.get("/src/ui/aegis-header-emblem.png")
+def get_aegis_header_emblem():
+    p = os.path.join(os.path.dirname(__file__), "assets", "aegis-header-emblem.png")
+    if not os.path.exists(p):
+        p = os.path.join(os.path.dirname(__file__), "aegis-header-emblem.png")
+    if os.path.exists(p):
+        return FileResponse(p, media_type="image/png")
+    raise HTTPException(status_code=404, detail="AEGIS Header emblem not found")
 
 # Load cached evaluation results if available
 EVAL_RESULTS_PATH = os.path.join("artifacts", "benchmark", "evaluation_results.json")
@@ -393,10 +420,10 @@ def index_page():
 html,body{height:100%;overflow:hidden;background:var(--bg-page);color:var(--tx-primary);font-family:var(--font-sans);font-size:13px;line-height:1.55;-webkit-font-smoothing:antialiased;transition:background .2s,color .2s}
 
 /* === SYSTEM BAR === */
-.sysbar{height:44px;background:var(--bg-surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0;z-index:100;transition:background .2s,border-color .2s}
-.sysbar-brand{font-weight:600;font-size:13px;color:var(--tx-primary);letter-spacing:.2px;display:flex;align-items:center;gap:8px}
+.sysbar{height:64px;background:var(--bg-surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0;z-index:100;transition:background .2s,border-color .2s}
+.sysbar-brand{font-weight:600;font-size:14px;color:var(--tx-primary);letter-spacing:.2px;display:flex;align-items:center;gap:12px}
 .sysbar-brand svg{width:16px;height:16px;fill:var(--info);stroke:var(--info)}
-.sysbar-sep{width:1px;height:20px;background:var(--border)}
+.sysbar-sep{width:1px;height:22px;background:var(--border)}
 .sysbar-tag{font-size:11px;font-weight:500;padding:2px 8px;border-radius:10px;letter-spacing:.3px}
 .sysbar-tag.live{background:var(--success-dim);color:var(--success);border:1px solid transparent}
 .sysbar-tag.info{background:var(--info-dim);color:var(--info);border:1px solid transparent}
@@ -602,7 +629,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg-page);color:var(--tx-p
 .top-nav-tab .badge-live{font-size:9px;padding:1px 5px;border-radius:3px;background:var(--danger-dim);color:var(--danger);font-weight:700;letter-spacing:.3px}
 
 /* === VIEW WRAPPER === */
-.view-container{width:100%;height:calc(100vh - 44px);overflow:hidden;display:none}
+.view-container{width:100%;height:calc(100vh - 64px);overflow:hidden;display:none}
 .view-container.active{display:flex}
 
 /* === LIVE AGENT VIEW === */
@@ -709,6 +736,86 @@ html,body{height:100%;overflow:hidden;background:var(--bg-page);color:var(--tx-p
 .tg-box{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;display:flex;flex-direction:column;gap:10px}
 .tg-box-head{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--tx-muted)}
 
+/* === OVERVIEW / LANDING HERO VIEW === */
+.overview-layout{flex:1;display:flex;flex-direction:column;overflow-y:auto;background:var(--bg-page);padding:24px 32px;gap:20px;box-sizing:border-box;width:100%}
+.hero-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:32px 36px;display:grid;grid-template-columns:1.2fr 0.8fr;gap:32px;transition:background .2s,border-color .2s;align-items:center}
+@media(max-width:1100px){.hero-card{grid-template-columns:1fr;gap:24px}}
+.hero-left{display:flex;flex-direction:column;justify-content:center}
+.hero-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--tab-active-border);margin-bottom:8px;display:flex;align-items:center;gap:8px;font-family:var(--font-mono)}
+.eyebrow-dot{width:7px;height:7px;border-radius:50%;background:var(--tab-active-border)}
+.hero-headline{font-family:var(--font-display);font-size:38px;font-weight:800;line-height:1;color:var(--tx-primary);letter-spacing:-.8px;margin:0 0 6px 0}
+.hero-subtitle{font-size:15px;font-weight:600;color:var(--tab-active-border);letter-spacing:.2px;margin:0 0 14px 0}
+.hero-desc{font-size:13px;color:var(--tx-secondary);line-height:1.65;margin:0 0 22px 0;max-width:540px}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap}
+.btn-hero-primary{background:var(--tab-active-border);color:#fff;border:none;border-radius:var(--radius);padding:10px 22px;font-size:12px;font-weight:700;letter-spacing:.3px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-family:var(--font-sans);transition:all .15s}
+.btn-hero-primary:hover{opacity:.9;transform:translateY(-1px)}
+.btn-hero-secondary{background:var(--bg-surface-secondary);color:var(--tx-primary);border:1px solid var(--border-emphasis);border-radius:var(--radius);padding:10px 22px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-family:var(--font-sans);transition:all .15s}
+.btn-hero-secondary:hover{background:var(--bg-surface-tertiary);border-color:var(--tab-active-border)}
+
+/* AEGIS Medusa Emblem (Hero Right) */
+.hero-emblem-wrap{display:flex;align-items:center;justify-content:center;padding:10px}
+.hero-emblem-box{position:relative;display:flex;align-items:center;justify-content:center;width:240px;height:240px;border-radius:50%;overflow:hidden;border:2px solid var(--border-emphasis);box-shadow:0 10px 30px rgba(0, 0, 0, 0.45);background:#0d0d10}
+.hero-emblem-img{width:100%;height:100%;object-fit:cover;object-position:center center;display:block;border-radius:50%;transition:transform .3s cubic-bezier(0.16, 1, 0.3, 1)}
+.hero-emblem-img:hover{transform:scale(1.03)}
+
+.sysbar-emblem-mark{width:50px;height:50px;border-radius:50%;object-fit:cover;object-position:center;flex-shrink:0;display:block;border:2px solid var(--border-emphasis);box-shadow:0 4px 12px rgba(0, 0, 0, 0.5);transition:transform .2s cubic-bezier(0.16, 1, 0.3, 1)}
+.sysbar-emblem-mark:hover{transform:scale(1.06)}
+
+/* Visual Investigation Flow */
+.hero-flow-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+.hero-flow-header{display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.flow-badge{font-family:var(--font-mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--tab-active-border)}
+.flow-sub{font-size:10px;font-weight:600;color:var(--tx-muted);letter-spacing:.3px;font-family:var(--font-mono)}
+.flow-nodes-horizontal{display:grid;grid-template-columns:repeat(5, 1fr);gap:12px}
+@media(max-width:1100px){.flow-nodes-horizontal{grid-template-columns:1fr 1fr;gap:10px}}
+@media(max-width:700px){.flow-nodes-horizontal{grid-template-columns:1fr}}
+.flow-node{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-surface-secondary);border:1px solid var(--border);border-radius:6px;transition:border-color .15s}
+.flow-node:hover{border-color:var(--border-emphasis)}
+.fn-icon{width:24px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;font-weight:700}
+.fn-alert{background:var(--danger-dim);color:var(--danger)}
+.fn-graph{background:var(--info-dim);color:var(--info)}
+.fn-rag{background:var(--history-dim);color:var(--history)}
+.fn-policy{background:var(--warning-dim);color:var(--warning)}
+.fn-nba{background:var(--success-dim);color:var(--success)}
+.fn-content{display:flex;flex-direction:column;gap:1px;min-width:0}
+.fn-title{font-size:11px;font-weight:600;color:var(--tx-primary)}
+.fn-sub{font-size:10px;color:var(--tx-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Live System Status Strip */
+.overview-status-strip{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--tx-secondary)}
+.oss-item{display:flex;align-items:center;gap:8px;font-size:11px}
+.oss-dot{color:var(--success);font-size:12px}
+.oss-sep{width:1px;height:14px;background:var(--border)}
+
+/* KPI Strip */
+.kpi-strip{display:grid;grid-template-columns:repeat(5, 1fr);gap:14px}
+@media(max-width:1100px){.kpi-strip{grid-template-columns:repeat(3, 1fr)}}
+@media(max-width:700px){.kpi-strip{grid-template-columns:1fr 1fr}}
+.kpi-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;display:flex;flex-direction:column;gap:4px;transition:all .15s}
+.kpi-card:hover{border-color:var(--border-emphasis);transform:translateY(-1px)}
+.kpi-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--tx-muted)}
+.kpi-val{font-family:var(--font-mono);font-size:20px;font-weight:700;color:var(--tx-primary)}
+.kpi-sub{font-size:11px;color:var(--tx-muted)}
+
+/* Benchmark Case Quick Explorer */
+.overview-explorer-section{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;display:flex;flex-direction:column;gap:16px}
+.oe-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.oe-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--tx-primary)}
+.oe-sub{font-size:12px;color:var(--tx-muted)}
+.oe-grid{display:grid;grid-template-columns:repeat(4, 1fr);gap:12px}
+@media(max-width:1400px){.oe-grid{grid-template-columns:repeat(3, 1fr)}}
+@media(max-width:1000px){.oe-grid{grid-template-columns:repeat(2, 1fr)}}
+@media(max-width:650px){.oe-grid{grid-template-columns:1fr}}
+.oe-card{background:var(--bg-surface-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:all .15s}
+.oe-card:hover{border-color:var(--tab-active-border);transform:translateY(-1px)}
+.oe-card-head{display:flex;justify-content:space-between;align-items:center}
+.oe-case-id{font-family:var(--font-mono);font-weight:700;font-size:13px;color:var(--tx-primary)}
+.oe-card-meta{font-size:11px;color:var(--tx-secondary);display:flex;flex-direction:column;gap:2px}
+.oe-card-meta strong{font-family:var(--font-mono);color:var(--tx-primary)}
+.oe-card-nba{display:flex;justify-content:space-between;align-items:center;margin-top:4px;padding-top:6px;border-top:1px solid var(--border);font-size:11px}
+.oe-nba-act{font-weight:600;color:var(--tx-primary)}
+.oe-nba-link{color:var(--info);font-size:10px;font-weight:600}
+
 </style>
 </head>
 <body data-theme="dark">
@@ -716,18 +823,19 @@ html,body{height:100%;overflow:hidden;background:var(--bg-page);color:var(--tx-p
 <!-- SYSTEM BAR -->
 <div class="sysbar">
   <div class="sysbar-brand">
-    <svg viewBox="0 0 24 24"><polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="2" x2="12" y2="22" stroke="currentColor" stroke-width="1"/><line x1="2" y1="8.5" x2="22" y2="8.5" stroke="currentColor" stroke-width="1"/><line x1="2" y1="15.5" x2="22" y2="15.5" stroke="currentColor" stroke-width="1"/></svg>
-    TigerGraph Agentic Investigation
+    <img src="/src/ui/assets/aegis-header-emblem.png" alt="AEGIS emblem" class="sysbar-emblem-mark">
+    <span><strong>AEGIS</strong> &bull; Agentic Evidence &amp; Graph Intelligence System</span>
   </div>
   <div class="sysbar-sep"></div>
   <div class="top-nav-tabs">
-    <button class="top-nav-tab active" data-view="case-deep-dive" onclick="switchTopView('case-deep-dive')">Case Deep Dive</button>
+    <button class="top-nav-tab active" data-view="overview" onclick="switchTopView('overview')">Overview</button>
+    <button class="top-nav-tab" data-view="case-deep-dive" onclick="switchTopView('case-deep-dive')">Case Deep Dive</button>
     <button class="top-nav-tab" data-view="live-agent" onclick="switchTopView('live-agent')">Live Agent</button>
     <button class="top-nav-tab" data-view="benchmark" onclick="switchTopView('benchmark')">Benchmark</button>
     <button class="top-nav-tab" data-view="tigergraph" onclick="switchTopView('tigergraph')">TigerGraph</button>
   </div>
   <div class="sysbar-sep"></div>
-  <span class="sysbar-tag" id="sys-live">● Loading...</span>
+  <span class="sysbar-tag live" id="sys-live">● TigerGraph MCP Online</span>
   <span class="sysbar-tag info" id="sys-graph">FraudGraph</span>
   <div class="sysbar-right">
     <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Switch theme" title="Switch Theme">
@@ -737,12 +845,219 @@ html,body{height:100%;overflow:hidden;background:var(--bg-page);color:var(--tx-p
       <svg viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
     </a>
     <div class="sysbar-sep" style="height:14px;"></div>
-    <span id="sys-count">—</span>
+    <span id="sys-count">20/20 benchmark cases</span>
+  </div>
+</div>
+
+<!-- VIEW 0: LANDING / OVERVIEW -->
+<div class="view-container active" id="view-overview">
+  <div class="overview-layout">
+    
+    <!-- HERO SECTION WITH AEGIS BRAND EMBLEM -->
+    <div class="hero-card">
+      <div class="hero-left">
+        <div class="hero-eyebrow">
+          <span class="eyebrow-dot"></span>
+          TIGERGRAPH &bull; HACKER HOUSE GOA 2026
+        </div>
+        <h1 class="hero-headline">AEGIS</h1>
+        <div class="hero-subtitle">Agentic Evidence &amp; Graph Intelligence System</div>
+        <p class="hero-desc">
+          Investigate fraud signals with a graph-native agent that gathers evidence, reasons over relationships and historical cases, evaluates policy, and produces a defensible next-best action.
+        </p>
+        <div class="hero-actions">
+          <button class="btn-hero-primary" onclick="switchTopView('live-agent')">
+            <span style="font-size:11px">&#9654;</span> RUN LIVE AGENT
+          </button>
+          <button class="btn-hero-secondary" onclick="switchTopView('case-deep-dive')">
+            <span>&#10140;</span> EXPLORE CASES
+          </button>
+        </div>
+      </div>
+      
+      <div class="hero-right">
+        <div class="hero-emblem-wrap">
+          <div class="hero-emblem-box">
+            <img src="/src/ui/assets/aegis-medusa-emblem.png" alt="AEGIS Medusa shield emblem" class="hero-emblem-img">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIVE SYSTEM STATUS STRIP -->
+    <div class="overview-status-strip">
+      <div class="oss-item">
+        <span class="oss-dot">●</span>
+        <strong>TIGERGRAPH MCP ONLINE</strong>
+      </div>
+      <div class="oss-sep"></div>
+      <div class="oss-item">
+        <span style="color:var(--tx-muted)">Graph:</span> <strong>FraudGraph Enterprise</strong>
+      </div>
+      <div class="oss-sep"></div>
+      <div class="oss-item">
+        <span style="color:var(--tx-muted)">Agent Engine:</span> <strong>Active &bull; 5 MCP Tools</strong>
+      </div>
+      <div class="oss-sep"></div>
+      <div class="oss-item">
+        <span style="color:var(--tx-muted)">Benchmark:</span> <strong>20 Cases Evaluated</strong>
+      </div>
+      <div class="oss-sep"></div>
+      <div class="oss-item">
+        <span style="color:var(--tx-muted)">Historical Memory:</span> <strong>5,565 Closed Precedents</strong>
+      </div>
+    </div>
+
+    <!-- KPI STRIP (WITH SAR PREPARATION CORRECTION) -->
+    <div class="kpi-strip">
+      <div class="kpi-card" onclick="switchTopView('benchmark')" style="cursor:pointer" title="View Benchmark">
+        <div class="kpi-label">BENCHMARK CASES</div>
+        <div class="kpi-val" id="ov-kpi-cases">20</div>
+        <div class="kpi-sub">100% evaluated</div>
+      </div>
+      <div class="kpi-card" onclick="switchTopView('benchmark')" style="cursor:pointer" title="View Benchmark">
+        <div class="kpi-label">FRAUD CAUGHT</div>
+        <div class="kpi-val" id="ov-kpi-fraud" style="color:var(--danger)">12</div>
+        <div class="kpi-sub">60% detection rate</div>
+      </div>
+      <div class="kpi-card" onclick="switchTopView('benchmark')" style="cursor:pointer" title="View SAR Documentation">
+        <div class="kpi-label">SAR PREPARATION</div>
+        <div class="kpi-val" id="ov-kpi-sar" style="color:var(--warning)">10</div>
+        <div class="kpi-sub">Prepared / recommended</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">EVALUATED EXPOSURE</div>
+        <div class="kpi-val" id="ov-kpi-exp">$36,878.89</div>
+        <div class="kpi-sub">Total benchmark spend</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">AUTONOMOUS NBA</div>
+        <div class="kpi-val" id="ov-kpi-nba" style="color:var(--success)">8</div>
+        <div class="kpi-sub">Autonomous vs 12 L1</div>
+      </div>
+    </div>
+
+    <!-- INVESTIGATION PIPELINE STRIP -->
+    <div class="overview-pipeline-section">
+      <div class="hero-flow-card">
+        <div class="hero-flow-header">
+          <span class="flow-badge">INVESTIGATION PIPELINE</span>
+          <span class="flow-sub">GRAPH &rarr; AGENT &rarr; EVIDENCE &rarr; DECISION</span>
+        </div>
+        <div class="flow-nodes-horizontal">
+          <div class="flow-node">
+            <div class="fn-icon fn-alert">&#9888;</div>
+            <div class="fn-content">
+              <div class="fn-title">1. Real-Time Alert</div>
+              <div class="fn-sub">Risk spike &bull; Velocity &bull; Report</div>
+            </div>
+          </div>
+          <div class="flow-node">
+            <div class="fn-icon fn-graph">&#9672;</div>
+            <div class="fn-content">
+              <div class="fn-title">2. TigerGraph MCP</div>
+              <div class="fn-sub">Customer &bull; Card &bull; Syndicates</div>
+            </div>
+          </div>
+          <div class="flow-node">
+            <div class="fn-icon fn-rag">&#9830;</div>
+            <div class="fn-content">
+              <div class="fn-title">3. GraphRAG Context</div>
+              <div class="fn-sub">5,565 closed precedents</div>
+            </div>
+          </div>
+          <div class="flow-node">
+            <div class="fn-icon fn-policy">&#9878;</div>
+            <div class="fn-content">
+              <div class="fn-title">4. Policy Safeguards</div>
+              <div class="fn-sub">Tiered governance &bull; L1 vs Auto</div>
+            </div>
+          </div>
+          <div class="flow-node">
+            <div class="fn-icon fn-nba">&#10003;</div>
+            <div class="fn-content">
+              <div class="fn-title">5. Autonomous NBA</div>
+              <div class="fn-sub">Card freeze &bull; Writeback</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIVE SYSTEM STATUS STRIP -->
+    <div class="overview-status-strip">
+      <div class="oss-item">
+        <span class="oss-dot">●</span>
+        <strong>TIGERGRAPH MCP ONLINE</strong>
+      </div>
+      <div class="oss-sep"></div>
+      <div class="oss-item">
+        <span style="color:var(--tx-muted)">Graph:</span> <strong>FraudGraph Enterprise</strong>
+      </div>
+      <div class="oss-sep"></div>
+      <div class="oss-item">
+        <span style="color:var(--tx-muted)">Agent Engine:</span> <strong>Active &bull; 5 MCP Tools</strong>
+      </div>
+      <div class="oss-sep"></div>
+      <div class="oss-item">
+        <span style="color:var(--tx-muted)">Benchmark:</span> <strong>20 Cases Evaluated</strong>
+      </div>
+      <div class="oss-sep"></div>
+      <div class="oss-item">
+        <span style="color:var(--tx-muted)">Historical Memory:</span> <strong>5,565 Closed Precedents</strong>
+      </div>
+    </div>
+
+    <!-- KPI STRIP (WITH SAR PREPARATION CORRECTION) -->
+    <div class="kpi-strip">
+      <div class="kpi-card" onclick="switchTopView('benchmark')" style="cursor:pointer" title="View Benchmark">
+        <div class="kpi-label">BENCHMARK CASES</div>
+        <div class="kpi-val" id="ov-kpi-cases">20</div>
+        <div class="kpi-sub">100% evaluated</div>
+      </div>
+      <div class="kpi-card" onclick="switchTopView('benchmark')" style="cursor:pointer" title="View Benchmark">
+        <div class="kpi-label">FRAUD CAUGHT</div>
+        <div class="kpi-val" id="ov-kpi-fraud" style="color:var(--danger)">12</div>
+        <div class="kpi-sub">60% detection rate</div>
+      </div>
+      <div class="kpi-card" onclick="switchTopView('benchmark')" style="cursor:pointer" title="View SAR Documentation">
+        <div class="kpi-label">SAR PREPARATION</div>
+        <div class="kpi-val" id="ov-kpi-sar" style="color:var(--warning)">10</div>
+        <div class="kpi-sub">Prepared / recommended</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">EVALUATED EXPOSURE</div>
+        <div class="kpi-val" id="ov-kpi-exp">$36,878.89</div>
+        <div class="kpi-sub">Total benchmark spend</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">AUTONOMOUS NBA</div>
+        <div class="kpi-val" id="ov-kpi-nba" style="color:var(--success)">8</div>
+        <div class="kpi-sub">Autonomous vs 12 L1</div>
+      </div>
+    </div>
+
+    <!-- QUICK EXPLORER SECTION -->
+    <div class="overview-explorer-section">
+      <div class="oe-header">
+        <div>
+          <div class="oe-title">BENCHMARK CASES EXPLORER</div>
+          <div class="oe-sub">Select any case below to launch Case Deep Dive or run live with the autonomous agent</div>
+        </div>
+        <button class="btn-hero-secondary" onclick="switchTopView('benchmark')" style="font-size:11px;padding:6px 14px">
+          View All Details &rarr;
+        </button>
+      </div>
+      <div class="oe-grid" id="ov-cases-grid">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
   </div>
 </div>
 
 <!-- VIEW 1: CASE DEEP DIVE (100% RESTORED APPROVED UI) -->
-<div class="view-container active" id="view-case-deep-dive">
+<div class="view-container" id="view-case-deep-dive">
 <div class="layout">
 
   <!-- CASE NAV -->
@@ -1016,7 +1331,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg-page);color:var(--tx-p
 
 <script>
 
-let allCases=[], activeId='HHG-003', selectedNodeId=null, svgNodes=[], currentCase=null;
+let allCases=[], activeId=null, selectedNodeId=null, svgNodes=[], currentCase=null;
 
 /* === THEME SYSTEM === */
 function getTheme(){return document.body.getAttribute('data-theme')||'dark'}
@@ -1040,21 +1355,55 @@ async function init(){
     const r=await fetch('/api/cases');
     allCases=await r.json();
     const liveCount=allCases.filter(c=>c.written_to_graph).length;
-    document.getElementById('sys-live').textContent=liveCount===allCases.length?'● LIVE':'● PARTIAL';
-    document.getElementById('sys-live').className='sysbar-tag '+(liveCount===allCases.length?'live':'info');
-    document.getElementById('sys-count').textContent=allCases.length+'/20 benchmark cases';
+    const sysLive=document.getElementById('sys-live');
+    if(sysLive){
+      sysLive.textContent='● TigerGraph MCP Online';
+      sysLive.className='sysbar-tag '+(liveCount===allCases.length?'live':'info');
+    }
+    const sysCount=document.getElementById('sys-count');
+    if(sysCount){
+      sysCount.textContent=allCases.length+'/20 benchmark cases';
+    }
+    
     renderNav();
     populateLiveAgentSelect();
     populateBenchmarkTable();
-    selectCase(activeId);
+    populateOverviewGrid();
+
+    // Check URL parameters for explicit case or view
+    const params = new URLSearchParams(window.location.search);
+    const paramCase = params.get('case');
+    const paramView = params.get('view');
+
+    if (paramCase && allCases.some(c => c.case_id === paramCase)) {
+      activeId = paramCase;
+      selectCase(activeId, false);
+      switchTopView(paramView || 'case-deep-dive', false);
+    } else if (paramView) {
+      if (allCases.length > 0) {
+        activeId = allCases[0].case_id;
+        selectCase(activeId, false);
+      }
+      switchTopView(paramView, false);
+    } else {
+      // DEFAULT: Open LANDING / OVERVIEW view (HHG-003 is NOT opened automatically)
+      if (allCases.length > 0) {
+        activeId = allCases[0].case_id;
+        selectCase(activeId, false);
+      }
+      switchTopView('overview', false);
+    }
+
     onLiveAgentCaseSelect(activeId);
   }catch(e){
-    document.getElementById('case-list').innerHTML=`<div style="padding:20px;color:var(--danger);word-break:break-all">${e.message}<br><br>${e.stack}</div>`;
+    const cl=document.getElementById('case-list');
+    if(cl) cl.innerHTML=`<div style="padding:20px;color:var(--danger);word-break:break-all">${e.message}<br><br>${e.stack}</div>`;
   }
 }
 
 function renderNav(){
   const el=document.getElementById('case-list');
+  if(!el) return;
   el.innerHTML='';
   allCases.forEach(c=>{
     const d=document.createElement('div');
@@ -1079,7 +1428,7 @@ document.querySelectorAll('.ws-tab').forEach(t=>{
   t.addEventListener('click',()=>switchTab(t.dataset.tab));
 });
 
-function selectCase(id){
+function selectCase(id, updateUrl = true){
   activeId=id;
   renderNav();
   const c=allCases.find(x=>x.case_id===id); currentCase=c;
@@ -1102,6 +1451,12 @@ function selectCase(id){
   renderReasoning(c);
   renderCompliance(c);
   switchTab('t-inv');
+
+  if(updateUrl){
+    const activeTab = document.querySelector('.top-nav-tab.active');
+    const curView = activeTab ? activeTab.getAttribute('data-view') : 'case-deep-dive';
+    window.history.replaceState(null, '', `?view=${curView}&case=${id}`);
+  }
 }
 
 /* ===== TAB 1: INVESTIGATION ===== */
@@ -1604,7 +1959,7 @@ window.addEventListener('resize',()=>{
 
 
 /* === TOP VIEW SWITCHING === */
-function switchTopView(viewId){
+function switchTopView(viewId, updateUrl = true){
   document.querySelectorAll('.top-nav-tab').forEach(t=>{
     if(t.getAttribute('data-view')===viewId) t.classList.add('active');
     else t.classList.remove('active');
@@ -1617,6 +1972,50 @@ function switchTopView(viewId){
     const c=allCases.find(x=>x.case_id===activeId);
     if(c)requestAnimationFrame(()=>drawGraph(c));
   }
+  if(updateUrl){
+    let q = `?view=${viewId}`;
+    if(viewId==='case-deep-dive' && activeId){
+      q += `&case=${activeId}`;
+    }
+    window.history.replaceState(null, '', q);
+  }
+}
+
+/* === OVERVIEW CASES GRID === */
+function populateOverviewGrid(){
+  const grid = document.getElementById('ov-cases-grid');
+  if(!grid) return;
+  grid.innerHTML = '';
+  allCases.forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'oe-card';
+    card.onclick = () => {
+      switchTopView('case-deep-dive');
+      selectCase(c.case_id);
+    };
+    
+    let pillClass = 'uncertain';
+    if(c.fraud_assessment==='likely_fraud') pillClass = 'fraud';
+    if(c.fraud_assessment==='likely_benign') pillClass = 'benign';
+    const amt = c.sar_data && c.sar_data.exposure_usd ? `$${c.sar_data.exposure_usd.toFixed(2)}` : '$0.00';
+    const trig = (c.trigger_type||'RISK_SCORE').replace(/_/g, ' ');
+
+    card.innerHTML = `
+      <div class="oe-card-head">
+        <span class="oe-case-id">${c.case_id}</span>
+        <span class="case-head-label ${pillClass}" style="font-size:10px;padding:2px 7px">${c.fraud_assessment.replace(/_/g, ' ').toUpperCase()}</span>
+      </div>
+      <div class="oe-card-meta">
+        <div><span>Amount:</span> <strong>${amt}</strong></div>
+        <div><span>Trigger:</span> ${trig}</div>
+      </div>
+      <div class="oe-card-nba">
+        <span class="oe-nba-act">${(c.recommended_nba||'VERIFY').replace(/_/g, ' ')}</span>
+        <span class="oe-nba-link">Deep Dive &rarr;</span>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
 }
 
 /* === LIVE AGENT INVESTIGATION LOGIC === */
