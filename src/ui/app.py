@@ -47,168 +47,249 @@ def index_page():
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TigerGraph Agentic Fraud Investigation</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Serif+4:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg-0:#080c14;--bg-1:#0d1117;--bg-2:#161b22;--bg-3:#1c2333;--bg-4:#242d3d;
-  --tx-0:#e6edf3;--tx-1:#c9d1d9;--tx-2:#8b949e;--tx-3:#6e7681;
-  --red:#da3633;--red-dim:rgba(218,54,51,.12);
-  --amber:#d29922;--amber-dim:rgba(210,153,34,.12);
-  --green:#3fb950;--green-dim:rgba(63,185,80,.12);
-  --blue:#58a6ff;--blue-dim:rgba(88,166,255,.08);
-  --purple:#bc8cff;--purple-dim:rgba(188,140,255,.12);
-  --cyan:#39d2c0;--cyan-dim:rgba(57,210,192,.1);
-  --border:#21262d;--border-emphasis:#30363d;
+
+/* === THEME TOKENS === */
+:root, [data-theme="light"] {
+  --bg-page:#f5f3ef;
+  --bg-surface:#ffffff;
+  --bg-surface-secondary:#faf9f7;
+  --bg-surface-tertiary:#f0eee9;
+  --bg-inset:#eae7e1;
+  --border:#ddd8d0;
+  --border-emphasis:#c8c2b8;
+  --tx-primary:#2c2a26;
+  --tx-secondary:#5a5650;
+  --tx-muted:#8a857d;
+  --tx-faint:#b0aaa0;
+  --danger:#8b2332;
+  --danger-dim:rgba(139,35,50,.08);
+  --warning:#a07118;
+  --warning-dim:rgba(160,113,24,.08);
+  --success:#2d6a40;
+  --success-dim:rgba(45,106,64,.08);
+  --info:#4a5d7a;
+  --info-dim:rgba(74,93,122,.08);
+  --history:#6b5b8a;
+  --history-dim:rgba(107,91,138,.08);
+  --node-customer:#4a5d7a;
+  --node-card:#3a7a6a;
+  --node-transaction:#a07118;
+  --node-case:#8b2332;
+  --node-history:#6b5b8a;
+  --graph-edge:#c8c2b8;
+  --graph-edge-hover:#8a857d;
+  --graph-node-fill-opacity:0.12;
+  --graph-label-bg:#ffffff;
+  --tooltip-bg:#ffffff;
+  --tooltip-border:#ddd8d0;
+  --tooltip-shadow:0 8px 24px rgba(0,0,0,0.1);
+  --tab-active-border:#4a5d7a;
+  --sidebar-active-bg:#eae7e1;
+  --sidebar-active-border:#4a5d7a;
+  --confidence-track:#eae7e1;
+  --selection-ring:#2c2a26;
   --font-sans:'Inter',system-ui,-apple-system,sans-serif;
+  --font-display:'Source Serif 4','Georgia',serif;
   --font-mono:'JetBrains Mono','Consolas',monospace;
-  --radius:6px;
+  --radius:5px;
 }
-html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--tx-0);font-family:var(--font-sans);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+
+[data-theme="dark"] {
+  --bg-page:#1e1d1b;
+  --bg-surface:#272623;
+  --bg-surface-secondary:#2e2d2a;
+  --bg-surface-tertiary:#353431;
+  --bg-inset:#1a1918;
+  --border:#3a3835;
+  --border-emphasis:#4a4845;
+  --tx-primary:#e2dfd8;
+  --tx-secondary:#b0aca4;
+  --tx-muted:#7a766e;
+  --tx-faint:#5a5650;
+  --danger:#d4636f;
+  --danger-dim:rgba(212,99,111,.12);
+  --warning:#d4a43a;
+  --warning-dim:rgba(212,164,58,.12);
+  --success:#5cb87a;
+  --success-dim:rgba(92,184,122,.12);
+  --info:#8ba4c8;
+  --info-dim:rgba(139,164,200,.10);
+  --history:#a896c8;
+  --history-dim:rgba(168,150,200,.12);
+  --node-customer:#8ba4c8;
+  --node-card:#5cb87a;
+  --node-transaction:#d4a43a;
+  --node-case:#d4636f;
+  --node-history:#a896c8;
+  --graph-edge:#4a4845;
+  --graph-edge-hover:#7a766e;
+  --graph-node-fill-opacity:0.15;
+  --graph-label-bg:#272623;
+  --tooltip-bg:#2e2d2a;
+  --tooltip-border:#4a4845;
+  --tooltip-shadow:0 8px 24px rgba(0,0,0,0.4);
+  --tab-active-border:#8ba4c8;
+  --sidebar-active-bg:#353431;
+  --sidebar-active-border:#8ba4c8;
+  --confidence-track:#353431;
+  --selection-ring:#e2dfd8;
+}
+
+html,body{height:100%;overflow:hidden;background:var(--bg-page);color:var(--tx-primary);font-family:var(--font-sans);font-size:13px;line-height:1.55;-webkit-font-smoothing:antialiased;transition:background .2s,color .2s}
 
 /* === SYSTEM BAR === */
-.sysbar{height:40px;background:var(--bg-1);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0;z-index:100}
-.sysbar-brand{font-weight:600;font-size:13px;color:var(--tx-1);letter-spacing:.3px;display:flex;align-items:center;gap:8px}
-.sysbar-brand svg{width:16px;height:16px;fill:var(--cyan)}
+.sysbar{height:44px;background:var(--bg-surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0;z-index:100;transition:background .2s,border-color .2s}
+.sysbar-brand{font-weight:600;font-size:13px;color:var(--tx-primary);letter-spacing:.2px;display:flex;align-items:center;gap:8px}
+.sysbar-brand svg{width:16px;height:16px;fill:var(--info);stroke:var(--info)}
 .sysbar-sep{width:1px;height:20px;background:var(--border)}
 .sysbar-tag{font-size:11px;font-weight:500;padding:2px 8px;border-radius:10px;letter-spacing:.3px}
-.sysbar-tag.live{background:var(--green-dim);color:var(--green);border:1px solid rgba(63,185,80,.25)}
-.sysbar-tag.info{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(88,166,255,.15)}
-.sysbar-right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:11px;color:var(--tx-3)}
+.sysbar-tag.live{background:var(--success-dim);color:var(--success);border:1px solid transparent}
+.sysbar-tag.info{background:var(--info-dim);color:var(--info);border:1px solid transparent}
+.sysbar-right{margin-left:auto;display:flex;align-items:center;gap:14px;font-size:11px;color:var(--tx-muted)}
+
+/* Theme toggle */
+.theme-toggle{background:none;border:1px solid var(--border);color:var(--tx-secondary);padding:4px 10px;border-radius:16px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;transition:all .15s;font-family:var(--font-sans);line-height:1}
+.theme-toggle:hover{border-color:var(--border-emphasis);color:var(--tx-primary);background:var(--bg-surface-secondary)}
+.theme-toggle:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+.theme-toggle .theme-icon{font-size:14px;line-height:1}
 
 /* === LAYOUT === */
-.layout{display:flex;height:calc(100vh - 40px)}
+.layout{display:flex;height:calc(100vh - 44px)}
 
 /* === CASE NAV === */
-.case-nav{width:220px;background:var(--bg-1);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
-.case-nav-head{padding:12px 14px 8px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx-3)}
-.case-scroll{flex:1;overflow-y:auto;padding:0 6px 6px}
+.case-nav{width:220px;background:var(--bg-surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:background .2s,border-color .2s}
+.case-nav-head{padding:14px 16px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--tx-muted)}
+.case-scroll{flex:1;overflow-y:auto;padding:0 8px 8px}
 .case-scroll::-webkit-scrollbar{width:4px}
 .case-scroll::-webkit-scrollbar-thumb{background:var(--border-emphasis);border-radius:4px}
-.ci{padding:8px 10px;border-radius:var(--radius);cursor:pointer;margin-bottom:2px;display:flex;align-items:center;justify-content:space-between;transition:background .15s}
-.ci:hover{background:var(--bg-2)}
-.ci.active{background:var(--bg-3);box-shadow:inset 2px 0 0 var(--blue)}
-.ci-id{font-weight:600;font-size:12px;font-family:var(--font-mono)}
+.ci{padding:8px 12px;border-radius:var(--radius);cursor:pointer;margin-bottom:2px;display:flex;align-items:center;justify-content:space-between;transition:background .15s}
+.ci:hover{background:var(--bg-surface-secondary)}
+.ci.active{background:var(--sidebar-active-bg);box-shadow:inset 2px 0 0 var(--sidebar-active-border)}
+.ci-id{font-weight:500;font-size:12px;font-family:var(--font-mono);color:var(--tx-primary)}
 .ci-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.ci-dot.fraud{background:var(--red)}.ci-dot.benign{background:var(--green)}.ci-dot.uncertain{background:var(--amber)}
+.ci-dot.fraud{background:var(--danger)}.ci-dot.benign{background:var(--success)}.ci-dot.uncertain{background:var(--warning)}
 
 /* === MAIN === */
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
 
 /* === CASE HEADER === */
-.case-head{padding:16px 24px 12px;background:var(--bg-1);border-bottom:1px solid var(--border);flex-shrink:0}
+.case-head{padding:18px 28px 14px;background:var(--bg-surface);border-bottom:1px solid var(--border);flex-shrink:0;transition:background .2s,border-color .2s}
 .case-head-top{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
-.case-head-id{font-size:22px;font-weight:700;font-family:var(--font-mono);letter-spacing:-.5px}
-.case-head-label{font-size:12px;font-weight:500;padding:3px 10px;border-radius:10px}
-.case-head-label.fraud{background:var(--red-dim);color:var(--red)}.case-head-label.benign{background:var(--green-dim);color:var(--green)}.case-head-label.uncertain{background:var(--amber-dim);color:var(--amber)}
-.case-head-meta{display:flex;gap:20px;font-size:12px;color:var(--tx-2)}
+.case-head-id{font-size:22px;font-weight:700;font-family:var(--font-display);letter-spacing:-.3px;color:var(--tx-primary)}
+.case-head-label{font-size:11px;font-weight:500;padding:3px 10px;border-radius:10px}
+.case-head-label.fraud{background:var(--danger-dim);color:var(--danger)}.case-head-label.benign{background:var(--success-dim);color:var(--success)}.case-head-label.uncertain{background:var(--warning-dim);color:var(--warning)}
+.case-head-meta{display:flex;gap:20px;font-size:12px;color:var(--tx-muted)}
 .case-head-meta span{display:flex;align-items:center;gap:4px}
-.case-head-meta .mono{font-family:var(--font-mono);color:var(--tx-1)}
+.case-head-meta .mono{font-family:var(--font-mono);font-size:11px;color:var(--tx-secondary)}
 
 /* === WORKSPACE TABS === */
-.ws-tabs{display:flex;background:var(--bg-1);border-bottom:1px solid var(--border);padding:0 24px;flex-shrink:0}
-.ws-tab{padding:10px 16px;font-size:12px;font-weight:500;color:var(--tx-3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none}
-.ws-tab:hover{color:var(--tx-1)}
-.ws-tab.active{color:var(--tx-0);border-bottom-color:var(--blue)}
+.ws-tabs{display:flex;background:var(--bg-surface);border-bottom:1px solid var(--border);padding:0 28px;flex-shrink:0;transition:background .2s,border-color .2s}
+.ws-tab{padding:10px 16px;font-size:12px;font-weight:500;color:var(--tx-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--font-sans)}
+.ws-tab:hover{color:var(--tx-secondary)}
+.ws-tab.active{color:var(--tx-primary);border-bottom-color:var(--tab-active-border)}
+.ws-tab:focus-visible{outline:2px solid var(--info);outline-offset:-2px}
 
 /* === WORKSPACE CONTENT === */
-.ws-body{flex:1;overflow-y:auto;overflow-x:hidden}
+.ws-body{flex:1;overflow-y:auto;overflow-x:hidden;background:var(--bg-page);transition:background .2s}
 .ws-body::-webkit-scrollbar{width:6px}
 .ws-body::-webkit-scrollbar-thumb{background:var(--border-emphasis);border-radius:4px}
-.ws-panel{display:none;padding:20px 24px}
+.ws-panel{display:none;padding:24px 28px}
 .ws-panel.active{display:block}
 
 /* === INVESTIGATION TAB === */
-.inv-layout{display:grid;grid-template-columns:280px 1fr 260px;gap:20px;min-height:600px}
+.inv-layout{display:grid;grid-template-columns:280px 1fr 260px;gap:24px;min-height:600px}
 .inv-col{display:flex;flex-direction:column;gap:16px}
 
 /* Agent Workflow */
-.trigger-block{background:var(--bg-2);border-radius:var(--radius);padding:14px 16px;border-left:3px solid var(--amber)}
-.trigger-type{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--amber);margin-bottom:4px}
-.trigger-text{font-size:12px;color:var(--tx-1);font-style:italic;line-height:1.6}
+.trigger-block{background:var(--bg-surface);border-radius:var(--radius);padding:14px 16px;border-left:3px solid var(--warning);transition:background .2s}
+.trigger-type{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--warning);margin-bottom:4px}
+.trigger-text{font-size:12px;color:var(--tx-secondary);font-style:italic;line-height:1.6}
 
-.step{position:relative;padding:10px 14px;background:var(--bg-2);border-radius:var(--radius);cursor:pointer;transition:background .15s}
-.step:hover{background:var(--bg-3)}
-.step-num{font-size:10px;font-weight:600;color:var(--blue);font-family:var(--font-mono);margin-bottom:2px}
-.step-tool{font-size:12px;font-weight:600;color:var(--tx-0);margin-bottom:2px}
-.step-brief{font-size:11px;color:var(--tx-2);display:flex;align-items:center;gap:6px}
-.step-brief .live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);display:inline-block}
-.step-detail{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--tx-2);line-height:1.6}
+.step{position:relative;padding:10px 14px;background:var(--bg-surface);border-radius:var(--radius);cursor:pointer;transition:background .15s}
+.step:hover{background:var(--bg-surface-secondary)}
+.step-num{font-size:10px;font-weight:600;color:var(--info);font-family:var(--font-mono);margin-bottom:2px}
+.step-tool{font-size:12px;font-weight:600;color:var(--tx-primary);margin-bottom:2px}
+.step-brief{font-size:11px;color:var(--tx-muted);display:flex;align-items:center;gap:6px}
+.step-brief .live-dot{width:5px;height:5px;border-radius:50%;background:var(--success);display:inline-block}
+.step-detail{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--tx-secondary);line-height:1.6}
 .step.open .step-detail{display:block}
 .step-connector{width:1px;height:12px;background:var(--border-emphasis);margin:0 auto}
 
 /* Graph Canvas */
-.graph-wrap{background:var(--bg-2);border-radius:var(--radius);border:1px solid var(--border);flex:1;min-height:0;position:relative;overflow:hidden}
+.graph-wrap{background:var(--bg-surface);border-radius:var(--radius);border:1px solid var(--border);flex:1;min-height:0;position:relative;overflow:hidden;transition:background .2s,border-color .2s}
 .graph-wrap canvas{display:block}
-.graph-title{position:absolute;top:10px;left:14px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--tx-3);z-index:2}
+.graph-title{position:absolute;top:10px;left:14px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--tx-muted);z-index:2}
 .graph-legend{position:absolute;bottom:10px;left:14px;display:flex;gap:10px;z-index:2}
-.graph-legend span{font-size:10px;color:var(--tx-3);display:flex;align-items:center;gap:4px}
+.graph-legend span{font-size:10px;color:var(--tx-muted);display:flex;align-items:center;gap:4px}
 .graph-legend .ldot{width:8px;height:8px;border-radius:50%}
 
 /* Decision Rail */
 .decision-section{margin-bottom:16px}
-.decision-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--tx-3);margin-bottom:6px}
+.decision-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--tx-muted);margin-bottom:6px}
 .decision-value{font-size:14px;font-weight:700;margin-bottom:4px}
-.decision-sub{font-size:11px;color:var(--tx-2);line-height:1.5}
+.decision-sub{font-size:11px;color:var(--tx-muted);line-height:1.5}
 .decision-divider{height:1px;background:var(--border);margin:12px 0}
 .approval-flow{display:flex;flex-direction:column;gap:0;align-items:flex-start}
 .af-step{display:flex;align-items:center;gap:8px;font-size:11px;padding:4px 0}
 .af-icon{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
-.af-icon.done{background:var(--green-dim);color:var(--green)}.af-icon.pending{background:var(--amber-dim);color:var(--amber)}.af-icon.wait{background:var(--bg-3);color:var(--tx-3)}
+.af-icon.done{background:var(--success-dim);color:var(--success)}.af-icon.pending{background:var(--warning-dim);color:var(--warning)}.af-icon.wait{background:var(--bg-surface-tertiary);color:var(--tx-muted)}
 .af-line{width:1px;height:10px;background:var(--border-emphasis);margin-left:9px}
 .confidence-bar-wrap{margin-top:12px}
-.confidence-bar-bg{height:4px;background:var(--bg-4);border-radius:2px;overflow:hidden}
+.confidence-bar-bg{height:4px;background:var(--confidence-track);border-radius:2px;overflow:hidden}
 .confidence-bar-fill{height:100%;border-radius:2px;transition:width .4s}
 
 /* === REASONING TAB === */
 .reason-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 .reason-full{grid-column:1/-1}
 .signal-group{margin-bottom:16px}
-.signal-head{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.signal-head{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;display:flex;align-items:center;gap:6px;color:var(--tx-secondary)}
 .signal-head .sdot{width:6px;height:6px;border-radius:50%}
-.signal-item{font-size:12px;color:var(--tx-1);padding:6px 0;border-bottom:1px solid var(--border);line-height:1.5}
+.signal-item{font-size:12px;color:var(--tx-secondary);padding:6px 0;border-bottom:1px solid var(--border);line-height:1.5}
 .signal-item:last-child{border-bottom:none}
-.hist-case{padding:10px 14px;background:var(--bg-2);border-radius:var(--radius);margin-bottom:8px;cursor:pointer;transition:background .15s}
-.hist-case:hover{background:var(--bg-3)}
+.hist-case{padding:10px 14px;background:var(--bg-surface);border-radius:var(--radius);margin-bottom:8px;cursor:pointer;transition:background .15s}
+.hist-case:hover{background:var(--bg-surface-secondary)}
 .hist-case-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
-.hist-case-id{font-weight:600;font-family:var(--font-mono);font-size:12px}
+.hist-case-id{font-weight:600;font-family:var(--font-mono);font-size:12px;color:var(--tx-primary)}
 .hist-case-tag{font-size:10px;font-weight:500;padding:2px 6px;border-radius:8px}
-.hist-case-tag.fraud{background:var(--red-dim);color:var(--red)}.hist-case-tag.cleared{background:var(--green-dim);color:var(--green)}
-.hist-case-detail{font-size:11px;color:var(--tx-2);display:none;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);line-height:1.5}
+.hist-case-tag.fraud{background:var(--danger-dim);color:var(--danger)}.hist-case-tag.cleared{background:var(--success-dim);color:var(--success)}
+.hist-case-detail{font-size:11px;color:var(--tx-muted);display:none;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);line-height:1.5}
 .hist-case.open .hist-case-detail{display:block}
-.hist-case-meta{font-size:11px;color:var(--tx-2);display:flex;gap:12px}
-.relevance-bar{width:60px;height:4px;background:var(--bg-4);border-radius:2px;overflow:hidden;display:inline-block;vertical-align:middle}
-.relevance-fill{height:100%;background:var(--blue);border-radius:2px}
+.hist-case-meta{font-size:11px;color:var(--tx-muted);display:flex;gap:12px}
+.relevance-bar{width:60px;height:4px;background:var(--confidence-track);border-radius:2px;overflow:hidden;display:inline-block;vertical-align:middle}
+.relevance-fill{height:100%;background:var(--info);border-radius:2px}
 
 /* metrics row */
 .metrics-row{display:flex;gap:24px;padding:16px 0;border-bottom:1px solid var(--border);margin-bottom:16px}
 .metric{display:flex;flex-direction:column;gap:2px}
-.metric-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--tx-3)}
-.metric-value{font-size:18px;font-weight:700}
+.metric-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--tx-muted)}
+.metric-value{font-size:18px;font-weight:700;color:var(--tx-primary)}
 
 /* === COMPLIANCE TAB === */
 .compliance-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
-.compliance-section{background:var(--bg-2);border-radius:var(--radius);padding:16px}
-.comp-head{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--tx-3);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
-.policy-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px}
-.policy-check{color:var(--green);font-size:11px}
+.compliance-section{background:var(--bg-surface);border-radius:var(--radius);padding:16px;transition:background .2s}
+.comp-head{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--tx-muted);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.policy-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;color:var(--tx-secondary)}
+.policy-check{color:var(--success);font-size:11px}
 .lifecycle-flow{display:flex;flex-direction:column;gap:0}
-.lf-step{padding:6px 0;font-size:12px;display:flex;align-items:center;gap:8px}
+.lf-step{padding:6px 0;font-size:12px;display:flex;align-items:center;gap:8px;color:var(--tx-secondary)}
 .lf-step .lf-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.lf-step .lf-dot.done{background:var(--green)}.lf-step .lf-dot.current{background:var(--amber);box-shadow:0 0 6px var(--amber)}.lf-step .lf-dot.future{background:var(--bg-4)}
+.lf-step .lf-dot.done{background:var(--success)}.lf-step .lf-dot.current{background:var(--warning);box-shadow:0 0 6px var(--warning)}.lf-step .lf-dot.future{background:var(--confidence-track)}
 .lf-line{width:1px;height:8px;background:var(--border-emphasis);margin-left:3.5px}
-.wb-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px}
-.wb-check{color:var(--green);font-size:11px}
+.wb-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;color:var(--tx-secondary)}
+.wb-check{color:var(--success);font-size:11px}
 .sar-status{font-size:16px;font-weight:600;margin-bottom:8px}
-.sar-detail{font-size:11px;color:var(--tx-2);line-height:1.6}
-.comp-note{margin-top:12px;padding:10px;background:var(--bg-3);border-radius:var(--radius);font-size:11px;color:var(--tx-2);line-height:1.5;border-left:2px solid var(--amber)}
+.sar-detail{font-size:11px;color:var(--tx-secondary);line-height:1.6}
+.comp-note{margin-top:12px;padding:10px;background:var(--bg-surface-secondary);border-radius:var(--radius);font-size:11px;color:var(--tx-muted);line-height:1.5;border-left:2px solid var(--warning)}
 
 /* Evidence panel in reasoning */
-.evidence-section{background:var(--bg-2);border-radius:var(--radius);padding:16px}
-.ev-head{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--tx-3);margin-bottom:10px}
-.ev-item{padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--tx-1);line-height:1.5}
+.evidence-section{background:var(--bg-surface);border-radius:var(--radius);padding:16px;transition:background .2s}
+.ev-head{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--tx-muted);margin-bottom:10px}
+.ev-item{padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--tx-secondary);line-height:1.5}
 .ev-item:last-child{border-bottom:none}
-.ev-source{font-size:10px;color:var(--tx-3);font-family:var(--font-mono);margin-top:2px}
+.ev-source{font-size:10px;color:var(--tx-muted);font-family:var(--font-mono);margin-top:2px}
 
 @media(max-width:1280px){
   .inv-layout{grid-template-columns:240px 1fr 240px}
@@ -216,47 +297,48 @@ html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--tx-0);f
 }
 
 /* Graph SVG Elements */
-.svg-edge{stroke:var(--border-emphasis);stroke-width:1.5px;transition:stroke 0.2s}
+.svg-edge{stroke:var(--graph-edge);stroke-width:1.5px;transition:stroke 0.2s}
 .svg-edge.interactive{cursor:pointer}
-.svg-edge:hover{stroke:var(--tx-2);stroke-width:2.5px}
-.svg-edge-label-bg{fill:var(--bg-2)}
-.svg-edge-label{fill:var(--tx-3);font-size:9px;font-weight:500;font-family:var(--font-sans);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.svg-edge:hover{stroke:var(--graph-edge-hover);stroke-width:2.5px}
+.svg-edge-label-bg{fill:var(--graph-label-bg)}
+.svg-edge-label{fill:var(--tx-muted);font-size:9px;font-weight:500;font-family:var(--font-sans);text-anchor:middle;dominant-baseline:central;pointer-events:none}
 .svg-node{cursor:pointer}
 .svg-node-circle{stroke-width:2px;transition:all 0.2s}
-.svg-node:hover .svg-node-circle{filter:brightness(1.3);stroke-width:3px}
-.svg-node.selected .svg-node-circle{stroke:var(--tx-0) !important;stroke-dasharray:4;animation:dash 10s linear infinite}
+.svg-node:hover .svg-node-circle{filter:brightness(1.15);stroke-width:3px}
+.svg-node.selected .svg-node-circle{stroke:var(--selection-ring) !important;stroke-dasharray:4;animation:dash 10s linear infinite}
 @keyframes dash { to { stroke-dashoffset: 100; } }
-.svg-node-label{fill:var(--tx-0);font-size:11px;font-family:var(--font-mono);font-weight:500;text-anchor:middle;pointer-events:none}
-.svg-node-sub{fill:var(--tx-3);font-size:9px;font-family:var(--font-sans);text-anchor:middle;pointer-events:none}
+.svg-node-label{fill:var(--tx-primary);font-size:11px;font-family:var(--font-mono);font-weight:500;text-anchor:middle;pointer-events:none}
+.svg-node-sub{fill:var(--tx-muted);font-size:9px;font-family:var(--font-sans);text-anchor:middle;pointer-events:none}
 
 /* Graph Tooltip */
-.graph-tooltip{position:absolute;background:var(--bg-2);border:1px solid var(--border-emphasis);border-radius:var(--radius);padding:10px 14px;color:var(--tx-0);font-size:12px;pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.5);transform:translate(-50%,-100%);margin-top:-10px;white-space:nowrap}
-.tt-type{font-size:10px;color:var(--tx-3);text-transform:uppercase;margin-bottom:4px;font-weight:600}
+.graph-tooltip{position:absolute;background:var(--tooltip-bg);border:1px solid var(--tooltip-border);border-radius:var(--radius);padding:10px 14px;color:var(--tx-primary);font-size:12px;pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:100;box-shadow:var(--tooltip-shadow);transform:translate(-50%,-100%);margin-top:-10px;white-space:nowrap}
+.tt-type{font-size:10px;color:var(--tx-muted);text-transform:uppercase;margin-bottom:4px;font-weight:600}
 .tt-id{font-size:13px;font-family:var(--font-mono);font-weight:600;margin-bottom:6px}
-.tt-meta{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--tx-1)}
+.tt-meta{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--tx-secondary)}
 
 /* Entity Details Panel (floating below) */
-.entity-details{background:var(--bg-1);border-top:1px solid var(--border);padding:16px;min-height:140px;display:flex;flex-direction:column;position:absolute;bottom:0;left:0;right:0;z-index:50}
-.ed-empty{color:var(--tx-3);font-size:12px;font-style:italic;margin:auto;text-align:center}
+.entity-details{background:var(--bg-surface);border-top:1px solid var(--border);padding:16px;min-height:140px;display:flex;flex-direction:column;position:absolute;bottom:0;left:0;right:0;z-index:50;transition:background .2s,border-color .2s}
+.ed-empty{color:var(--tx-muted);font-size:12px;font-style:italic;margin:auto;text-align:center}
 .ed-content{display:none;flex-direction:column;height:100%}
 .ed-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
-.ed-type{font-size:10px;font-weight:600;color:var(--tx-3);text-transform:uppercase;letter-spacing:.5px}
-.ed-id{font-size:16px;font-weight:600;font-family:var(--font-mono);color:var(--tx-0);margin-top:2px}
+.ed-type{font-size:10px;font-weight:600;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.5px}
+.ed-id{font-size:16px;font-weight:600;font-family:var(--font-mono);color:var(--tx-primary);margin-top:2px}
 .ed-body{display:flex;gap:32px;font-size:12px}
 .ed-col{display:flex;flex-direction:column;gap:8px;flex:1}
-.ed-lbl{color:var(--tx-3)}
-.ed-val{color:var(--tx-1)}
-.ed-nav-btn{background:var(--bg-2);border:1px solid var(--border);color:var(--tx-1);padding:4px 10px;border-radius:var(--radius);font-size:11px;cursor:pointer;transition:background 0.1s;display:inline-block;margin-top:8px}
-.ed-nav-btn:hover{background:var(--bg-3);color:var(--tx-0)}
+.ed-lbl{color:var(--tx-muted)}
+.ed-val{color:var(--tx-secondary)}
+.ed-nav-btn{background:var(--bg-surface-secondary);border:1px solid var(--border);color:var(--tx-secondary);padding:4px 10px;border-radius:var(--radius);font-size:11px;cursor:pointer;transition:background 0.1s;display:inline-block;margin-top:8px;font-family:var(--font-sans)}
+.ed-nav-btn:hover{background:var(--bg-surface-tertiary);color:var(--tx-primary)}
+.ed-nav-btn:focus-visible{outline:2px solid var(--info);outline-offset:2px}
 
 /* Auth States */
 .auth-title{font-size:11px;font-weight:600}
-.text-red{color:var(--red)}
-.text-green{color:var(--green)}
-.text-amber{color:var(--amber)}
+.text-red{color:var(--danger)}
+.text-green{color:var(--success)}
+.text-amber{color:var(--warning)}
 </style>
 </head>
-<body>
+<body data-theme="dark">
 
 <!-- SYSTEM BAR -->
 <div class="sysbar">
@@ -268,6 +350,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--tx-0);f
   <span class="sysbar-tag" id="sys-live">Loading...</span>
   <span class="sysbar-tag info" id="sys-graph">FraudGraph</span>
   <div class="sysbar-right">
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Switch theme">
+      <span class="theme-icon" id="theme-icon">☀</span>
+    </button>
     <span id="sys-count">—</span>
   </div>
 </div>
@@ -308,6 +393,23 @@ html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--tx-0);f
 <script>
 let allCases=[], activeId='HHG-003', selectedNodeId=null, svgNodes=[], currentCase=null;
 
+/* === THEME SYSTEM === */
+function getTheme(){return document.body.getAttribute('data-theme')||'dark'}
+function setTheme(t){
+  document.body.setAttribute('data-theme',t);
+  localStorage.setItem('hhg-theme',t);
+  const icon=document.getElementById('theme-icon');
+  const btn=document.getElementById('theme-toggle');
+  if(icon)icon.textContent=t==='dark'?'\u2600':'\u25D1';
+  if(btn)btn.setAttribute('aria-label',t==='dark'?'Switch to light mode':'Switch to dark mode');
+  // Redraw graph with new theme colors
+  const c=allCases.find(x=>x.case_id===activeId);
+  if(c)requestAnimationFrame(()=>drawGraph(c));
+}
+function toggleTheme(){setTheme(getTheme()==='dark'?'light':'dark')}
+// Apply saved theme
+(function(){const saved=localStorage.getItem('hhg-theme');if(saved)document.body.setAttribute('data-theme',saved);const icon=document.getElementById('theme-icon');if(icon)icon.textContent=(saved||'dark')==='dark'?'\u2600':'\u25D1';})();
+
 async function init(){
   try{
     const r=await fetch('/api/cases');
@@ -319,7 +421,7 @@ async function init(){
     renderNav();
     selectCase(activeId);
   }catch(e){
-    document.getElementById('case-list').innerHTML=`<div style="padding:20px;color:var(--red);word-break:break-all">${e.message}<br><br>${e.stack}</div>`;
+    document.getElementById('case-list').innerHTML=`<div style="padding:20px;color:var(--danger);word-break:break-all">${e.message}<br><br>${e.stack}</div>`;
   }
 }
 
@@ -366,7 +468,7 @@ function selectCase(id){
     `<span>Customer <span class="mono">${c.customer_id}</span></span>`+
     `<span>Card <span class="mono">${c.card_id}</span></span>`+
     `<span>TXN <span class="mono">${c.transaction_id}</span></span>`+
-    `<span>${c.written_to_graph?'<span style="color:var(--green)">&#9679;</span> Live Writeback':'<span style="color:var(--tx-3)">&#9675;</span> Offline'}</span>`;
+    `<span>${c.written_to_graph?'<span style="color:var(--success)">&#9679;</span> Live Writeback':'<span style="color:var(--tx-faint)">&#9675;</span> Offline'}</span>`;
 
   renderInvestigation(c);
   renderReasoning(c);
@@ -398,7 +500,7 @@ function renderInvestigation(c){
       <div class="step-num">STEP ${String(s.step_number).padStart(2,'0')}</div>
       <div class="step-tool">${s.tool.replace(/_/g,' ')}</div>
       <div class="step-brief"><span class="live-dot"></span> ${briefResult(s.result_summary)}</div>
-      <div class="step-detail">${s.result_summary}<br><br><em style="color:var(--tx-3)">Reason: ${s.reason}</em></div>
+      <div class="step-detail">${s.result_summary}<br><br><em style="color:var(--tx-faint)">Reason: ${s.reason}</em></div>
     </div>`;
   });
 
@@ -406,17 +508,17 @@ function renderInvestigation(c){
   let assessClass='uncertain';
   if(c.fraud_assessment==='likely_fraud')assessClass='fraud';
   if(c.fraud_assessment==='likely_benign')assessClass='benign';
-  let nbaColor=c.recommended_nba==='BLOCK_CARD'?'var(--red)':c.recommended_nba==='VERIFY_WITH_CUSTOMER'?'var(--amber)':'var(--tx-0)';
+  let nbaColor=c.recommended_nba==='BLOCK_CARD'?'var(--danger)':c.recommended_nba==='VERIFY_WITH_CUSTOMER'?'var(--warning)':'var(--tx-primary)';
   let confPct=Math.round(c.confidence*100);
-  let confColor=confPct>=70?'var(--red)':confPct>=50?'var(--amber)':'var(--tx-2)';
-  let uncColor=c.uncertainty_level==='high'?'var(--amber)':c.uncertainty_level==='low'?'var(--green)':'var(--tx-1)';
+  let confColor=confPct>=70?'var(--danger)':confPct>=50?'var(--warning)':'var(--tx-muted)';
+  let uncColor=c.uncertainty_level==='high'?'var(--warning)':c.uncertainty_level==='low'?'var(--success)':'var(--tx-secondary)';
 
   let decisionHtml=`
     <div class="decision-section">
       <div class="decision-label">Assessment</div>
-      <div class="decision-value" style="color:${assessClass==='fraud'?'var(--red)':assessClass==='benign'?'var(--green)':'var(--amber)'}">${c.fraud_assessment.replace(/_/g,' ').toUpperCase()}</div>
+      <div class="decision-value" style="color:${assessClass==='fraud'?'var(--danger)':assessClass==='benign'?'var(--success)':'var(--warning)'}">${c.fraud_assessment.replace(/_/g,' ').toUpperCase()}</div>
       <div class="confidence-bar-wrap">
-        <div style="font-size:10px;color:var(--tx-3);margin-bottom:3px">Confidence ${confPct}%</div>
+        <div style="font-size:10px;color:var(--tx-faint);margin-bottom:3px">Confidence ${confPct}%</div>
         <div class="confidence-bar-bg"><div class="confidence-bar-fill" style="width:${confPct}%;background:${confColor}"></div></div>
       </div>
       <div style="font-size:11px;color:${uncColor};margin-top:6px">Uncertainty: ${c.uncertainty_level.toUpperCase()}</div>
@@ -440,16 +542,16 @@ function renderInvestigation(c){
         ${c.execution_status === 'EXECUTED' 
             ? '<div class="af-step"><div class="af-icon done">&#10003;</div><span class="auth-title text-green">Action Executed</span></div>'
             : c.execution_status === 'DENIED'
-            ? '<div class="af-step"><div class="af-icon wait" style="color:var(--red)">&#10005;</div><span class="auth-title text-red">Execution Denied</span></div>'
+            ? '<div class="af-step"><div class="af-icon wait" style="color:var(--danger)">&#10005;</div><span class="auth-title text-red">Execution Denied</span></div>'
             : c.approval_required
-            ? '<div class="af-step"><div class="af-icon wait">○</div><span class="auth-title" style="color:var(--tx-2)">Pending Approval</span></div>'
-            : '<div class="af-step"><div class="af-icon wait">○</div><span class="auth-title" style="color:var(--tx-2)">Ready for Execution</span></div>'}
+            ? '<div class="af-step"><div class="af-icon wait">○</div><span class="auth-title" style="color:var(--tx-muted)">Pending Approval</span></div>'
+            : '<div class="af-step"><div class="af-icon wait">○</div><span class="auth-title" style="color:var(--tx-muted)">Ready for Execution</span></div>'}
       </div>
     </div>
     <div class="decision-divider"></div>
     <div class="decision-section">
       <div class="decision-label">Lifecycle</div>
-      <div style="font-size:12px;font-weight:500;color:var(--tx-1)">${c.lifecycle_state.replace(/_/g,' ')}</div>
+      <div style="font-size:12px;font-weight:500;color:var(--tx-secondary)">${c.lifecycle_state.replace(/_/g,' ')}</div>
     </div>`;
 
   el.innerHTML=`
@@ -461,11 +563,11 @@ function renderInvestigation(c){
         <svg id="main-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;"></svg>
         <div class="graph-tooltip" id="graph-tooltip"></div>
         <div class="graph-legend">
-          <span><span class="ldot" style="background:var(--blue)"></span>Customer</span>
-          <span><span class="ldot" style="background:var(--cyan)"></span>Card</span>
-          <span><span class="ldot" style="background:var(--amber)"></span>Transaction</span>
-          <span><span class="ldot" style="background:var(--red)"></span>Case</span>
-          <span><span class="ldot" style="background:var(--purple)"></span>History</span>
+          <span><span class="ldot" style="background:var(--node-customer)"></span>Customer</span>
+          <span><span class="ldot" style="background:var(--node-card)"></span>Card</span>
+          <span><span class="ldot" style="background:var(--node-transaction)"></span>Transaction</span>
+          <span><span class="ldot" style="background:var(--node-case)"></span>Case</span>
+          <span><span class="ldot" style="background:var(--node-history)"></span>History</span>
         </div>
         <div class="entity-details">
           <div class="ed-empty" id="ed-empty">Select a node or edge in the graph to view details.</div>
@@ -504,12 +606,15 @@ function drawGraph(c){
   const startY = cy - 80;
   const spacingY = 90;
 
-  svgNodes.push({id:c.customer_id,label:c.customer_id,type:'Customer',x:startX,y:startY,r:24,color:'#58a6ff'});
-  svgNodes.push({id:c.card_id,label:c.card_id,type:'Card',x:startX,y:startY+spacingY,r:20,color:'#39d2c0'});
-  svgNodes.push({id:String(c.transaction_id),label:'$'+(c.sar_data?c.sar_data.exposure_usd.toFixed(0):'?'),type:'Transaction',x:startX,y:startY+spacingY*2,r:18,color:'#d29922'});
+  const cs=getComputedStyle(document.documentElement);
+  const nodeColors={customer:cs.getPropertyValue('--node-customer').trim(),card:cs.getPropertyValue('--node-card').trim(),transaction:cs.getPropertyValue('--node-transaction').trim(),case_:cs.getPropertyValue('--node-case').trim(),history:cs.getPropertyValue('--node-history').trim()};
+
+  svgNodes.push({id:c.customer_id,label:c.customer_id,type:'Customer',x:startX,y:startY,r:24,color:nodeColors.customer});
+  svgNodes.push({id:c.card_id,label:c.card_id,type:'Card',x:startX,y:startY+spacingY,r:20,color:nodeColors.card});
+  svgNodes.push({id:String(c.transaction_id),label:'$'+(c.sar_data?c.sar_data.exposure_usd.toFixed(0):'?'),type:'Transaction',x:startX,y:startY+spacingY*2,r:18,color:nodeColors.transaction});
   
   // Case node offset to the left of the transaction
-  svgNodes.push({id:c.case_id,label:c.case_id,type:'Case',x:startX-120,y:startY+spacingY*1.5,r:20,color:'#da3633'});
+  svgNodes.push({id:c.case_id,label:c.case_id,type:'Case',x:startX-120,y:startY+spacingY*1.5,r:20,color:nodeColors.case_});
   
   svgEdges.push({from:c.customer_id,to:c.card_id,label:'HAS_CARD'});
   svgEdges.push({from:c.card_id,to:String(c.transaction_id),label:'USED_FOR'});
@@ -526,7 +631,7 @@ function drawGraph(c){
       const h=c.historical_evidence[i];
       const hx = hStartX;
       const hy = hStartY + (i * hSpacingY);
-      svgNodes.push({id:h.case_id,label:h.case_id,type:'History',x:hx,y:hy,r:14,color:'#bc8cff'});
+      svgNodes.push({id:h.case_id,label:h.case_id,type:'History',x:hx,y:hy,r:14,color:nodeColors.history});
       svgEdges.push({from:c.customer_id,to:h.case_id,label:'PRIOR'});
     }
   }
@@ -579,7 +684,8 @@ function drawGraph(c){
     g.setAttribute('transform',`translate(${n.x}, ${n.y})`);
     
     const bg=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    bg.setAttribute('r',n.r);bg.setAttribute('fill',n.color);bg.setAttribute('fill-opacity','0.15');
+    const fillOp=getComputedStyle(document.documentElement).getPropertyValue('--graph-node-fill-opacity').trim()||'0.12';
+    bg.setAttribute('r',n.r);bg.setAttribute('fill',n.color);bg.setAttribute('fill-opacity',fillOp);
     
     const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
     circle.setAttribute('class','svg-node-circle');
@@ -619,7 +725,7 @@ function showEdgeTooltip(ev, e) {
   const tt=document.getElementById('graph-tooltip');
   const wrap=document.getElementById('graph-canvas-wrap');
   const rect=wrap.getBoundingClientRect();
-  tt.innerHTML=`<div class="tt-type">Relationship</div><div class="tt-id" style="color:var(--tx-1)">${e.from} &rarr; ${e.to}</div><div class="tt-meta">${e.label}</div>`;
+  tt.innerHTML=`<div class="tt-type">Relationship</div><div class="tt-id" style="color:var(--tx-secondary)">${e.from} &rarr; ${e.to}</div><div class="tt-meta">${e.label}</div>`;
   tt.style.left=(ev.clientX-rect.left)+'px';
   tt.style.top=(ev.clientY-rect.top-15)+'px';
   tt.style.opacity='1';
@@ -645,7 +751,7 @@ function showEdgeDetails(e) {
   document.getElementById('ed-empty').style.display='none';
   document.getElementById('ed-content').style.display='flex';
   document.getElementById('ed-type').textContent='Relationship';
-  document.getElementById('ed-id').innerHTML=`<span style="color:var(--tx-3)">${e.from}</span> &rarr; <span style="color:var(--tx-3)">${e.to}</span>`;
+  document.getElementById('ed-id').innerHTML=`<span style="color:var(--tx-faint)">${e.from}</span> &rarr; <span style="color:var(--tx-faint)">${e.to}</span>`;
   document.getElementById('ed-body').innerHTML=`
     <div class="ed-col">
       <div><span class="ed-lbl">Label:</span> <span class="ed-val">${e.label}</span></div>
@@ -694,7 +800,7 @@ function showDetails(n) {
         if(m){status=m[1];patt=m[2];}
       }
     });
-    bodyHtml+=`<div><span class="ed-lbl">Status:</span> <span class="ed-val" style="color:${status==='CONFIRMED_FRAUD'?'var(--red)':'var(--tx-1)'}">${status.replace(/_/g,' ')}</span></div>`;
+    bodyHtml+=`<div><span class="ed-lbl">Status:</span> <span class="ed-val" style="color:${status==='CONFIRMED_FRAUD'?'var(--danger)':'var(--tx-secondary)'}">${status.replace(/_/g,' ')}</span></div>`;
     bodyHtml+=`<div><span class="ed-lbl">Pattern:</span> <span class="ed-val">${patt.replace(/_/g,' ')}</span></div>`;
     bodyHtml+=`</div><div class="ed-col"><button class="ed-nav-btn" onclick="switchTab('t-reason')">View GraphRAG Precedents &rarr;</button>`;
   }
@@ -754,7 +860,7 @@ function renderReasoning(c){
   el.innerHTML=`
   <div class="metrics-row">
     <div class="metric"><div class="metric-label">Confidence</div><div class="metric-value">${confPct}%</div></div>
-    <div class="metric"><div class="metric-label">Uncertainty</div><div class="metric-value" style="color:${c.uncertainty_level==='high'?'var(--amber)':'var(--tx-0)'}">${c.uncertainty_level.toUpperCase()}</div></div>
+    <div class="metric"><div class="metric-label">Uncertainty</div><div class="metric-value" style="color:${c.uncertainty_level==='high'?'var(--warning)':'var(--tx-primary)'}">${c.uncertainty_level.toUpperCase()}</div></div>
     <div class="metric"><div class="metric-label">Evidence Items</div><div class="metric-value">${(c.current_evidence||[]).length}</div></div>
     <div class="metric"><div class="metric-label">Tools Used</div><div class="metric-value">${c.tool_call_count}</div></div>
     <div class="metric"><div class="metric-label">Prior Cases</div><div class="metric-value">${(c.historical_evidence||[]).length}</div></div>
@@ -763,29 +869,29 @@ function renderReasoning(c){
   <div class="reason-grid">
     <div>
       <div class="signal-group">
-        <div class="signal-head"><span class="sdot" style="background:var(--red)"></span> Strong Signals</div>
-        ${(c.supporting_findings||[]).map(f=>`<div class="signal-item">${f}</div>`).join('')||'<div class="signal-item" style="color:var(--tx-3)">None</div>'}
+        <div class="signal-head"><span class="sdot" style="background:var(--danger)"></span> Strong Signals</div>
+        ${(c.supporting_findings||[]).map(f=>`<div class="signal-item">${f}</div>`).join('')||'<div class="signal-item" style="color:var(--tx-faint)">None</div>'}
       </div>
       <div class="signal-group">
-        <div class="signal-head"><span class="sdot" style="background:var(--green)"></span> Counter-Signals</div>
-        ${(c.contradictory_findings||[]).map(f=>`<div class="signal-item">${f}</div>`).join('')||'<div class="signal-item" style="color:var(--tx-3)">None</div>'}
+        <div class="signal-head"><span class="sdot" style="background:var(--success)"></span> Counter-Signals</div>
+        ${(c.contradictory_findings||[]).map(f=>`<div class="signal-item">${f}</div>`).join('')||'<div class="signal-item" style="color:var(--tx-faint)">None</div>'}
       </div>
     </div>
     <div>
       <div class="signal-group">
-        <div class="signal-head"><span class="sdot" style="background:var(--amber)"></span> Uncertainty Factors</div>
+        <div class="signal-head"><span class="sdot" style="background:var(--warning)"></span> Uncertainty Factors</div>
         ${(c.uncertainty_reasons||[]).map(r=>`<div class="signal-item">${r}</div>`).join('')}
-        ${(c.evidence_gaps||[]).map(g=>`<div class="signal-item" style="color:var(--amber)">Gap: ${g}</div>`).join('')}
+        ${(c.evidence_gaps||[]).map(g=>`<div class="signal-item" style="color:var(--warning)">Gap: ${g}</div>`).join('')}
       </div>
       <div class="signal-group">
-        <div class="signal-head"><span class="sdot" style="background:var(--blue)"></span> Explanation</div>
+        <div class="signal-head"><span class="sdot" style="background:var(--info)"></span> Explanation</div>
         ${c.explanation&&c.explanation.why_suspicious?(c.explanation.why_suspicious.map(r=>`<div class="signal-item">${r}</div>`).join('')):''}
-        ${c.explanation&&c.explanation.why_action?(c.explanation.why_action.map(r=>`<div class="signal-item" style="color:var(--tx-2)">${r}</div>`).join('')):''}
+        ${c.explanation&&c.explanation.why_action?(c.explanation.why_action.map(r=>`<div class="signal-item" style="color:var(--tx-muted)">${r}</div>`).join('')):''}
       </div>
     </div>
     <div>
-      <div class="signal-head" style="margin-bottom:10px"><span class="sdot" style="background:var(--purple)"></span> GraphRAG Historical Precedents</div>
-      ${histHtml||'<div style="font-size:12px;color:var(--tx-3)">No historical cases found.</div>'}
+      <div class="signal-head" style="margin-bottom:10px"><span class="sdot" style="background:var(--history)"></span> GraphRAG Historical Precedents</div>
+      ${histHtml||'<div style="font-size:12px;color:var(--tx-faint)">No historical cases found.</div>'}
     </div>
     <div>
       <div class="evidence-section">
@@ -824,8 +930,8 @@ function renderCompliance(c){
   <div class="compliance-grid">
     <div class="compliance-section">
       <div class="comp-head">Policy Evaluation</div>
-      ${policyRules.length>0?policyRules.map(r=>`<div class="policy-row"><span class="policy-check">&#10003;</span>${r}</div>`).join(''):'<div style="font-size:12px;color:var(--tx-3)">No policy rules explicitly recorded.</div>'}
-      <div style="margin-top:12px;font-size:11px;color:var(--tx-2)">
+      ${policyRules.length>0?policyRules.map(r=>`<div class="policy-row"><span class="policy-check">&#10003;</span>${r}</div>`).join(''):'<div style="font-size:12px;color:var(--tx-faint)">No policy rules explicitly recorded.</div>'}
+      <div style="margin-top:12px;font-size:11px;color:var(--tx-muted)">
         Approval Route: <strong>${c.approval_route||'auto'}</strong><br>
         Approval Required: <strong>${c.approval_required?'Yes':'No'}</strong>
       </div>
@@ -843,12 +949,12 @@ function renderCompliance(c){
         <div class="wb-row"><span class="wb-check">&#10003;</span> INVOLVES &rarr; ${c.transaction_id}</div>
         <div class="wb-row"><span class="wb-check">&#10003;</span> ON_CARD &rarr; ${c.card_id}</div>
         <div class="wb-row"><span class="wb-check">&#10003;</span> CONNECTED_TO &rarr; ${c.customer_id}</div>
-      `:`<div style="font-size:12px;color:var(--tx-3)">Writeback not performed (offline mode).</div>`}
+      `:`<div style="font-size:12px;color:var(--tx-faint)">Writeback not performed (offline mode).</div>`}
     </div>
 
     <div class="compliance-section" style="grid-column:1/-1">
       <div class="comp-head">SAR Preparation & Compliance</div>
-      <div class="sar-status" style="color:${c.sar_data&&c.sar_data.sar_required?'var(--red)':'var(--green)'}">${c.sar_data&&c.sar_data.sar_required?'SAR PREPARATION REQUIRED':'SAR NOT REQUIRED'}</div>
+      <div class="sar-status" style="color:${c.sar_data&&c.sar_data.sar_required?'var(--danger)':'var(--success)'}">${c.sar_data&&c.sar_data.sar_required?'SAR PREPARATION REQUIRED':'SAR NOT REQUIRED'}</div>
       <div class="sar-detail">
         <strong>Exposure:</strong> $${c.sar_data?c.sar_data.exposure_usd.toFixed(2):'0.00'} USD<br>
         <strong>Status:</strong> ${c.sar_data?c.sar_data.sar_status:'N/A'}<br>
