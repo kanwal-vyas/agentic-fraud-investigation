@@ -53,44 +53,44 @@ def index_page():
 
 /* === THEME TOKENS === */
 :root, [data-theme="light"] {
-  --bg-page:#f5f3ef;
-  --bg-surface:#ffffff;
-  --bg-surface-secondary:#faf9f7;
-  --bg-surface-tertiary:#f0eee9;
-  --bg-inset:#eae7e1;
-  --border:#ddd8d0;
-  --border-emphasis:#c8c2b8;
-  --tx-primary:#2c2a26;
-  --tx-secondary:#5a5650;
-  --tx-muted:#8a857d;
-  --tx-faint:#b0aaa0;
-  --danger:#8b2332;
-  --danger-dim:rgba(139,35,50,.08);
-  --warning:#a07118;
-  --warning-dim:rgba(160,113,24,.08);
-  --success:#2d6a40;
-  --success-dim:rgba(45,106,64,.08);
-  --info:#4a5d7a;
-  --info-dim:rgba(74,93,122,.08);
-  --history:#6b5b8a;
-  --history-dim:rgba(107,91,138,.08);
-  --node-customer:#4a5d7a;
-  --node-card:#3a7a6a;
-  --node-transaction:#a07118;
-  --node-case:#8b2332;
-  --node-history:#6b5b8a;
+  --bg-page:#f2ebdd;
+  --bg-surface:#faf8f2;
+  --bg-surface-secondary:#f0eee5;
+  --bg-surface-tertiary:#e6e4db;
+  --bg-inset:#e8e4d5;
+  --border:#d5d1c5;
+  --border-emphasis:#b5b0a3;
+  --tx-primary:#242521;
+  --tx-secondary:#454840;
+  --tx-muted:#6b6f63;
+  --tx-faint:#95998a;
+  --danger:#a5533f;
+  --danger-dim:rgba(165,83,63,.08);
+  --warning:#b18a45;
+  --warning-dim:rgba(177,138,69,.08);
+  --success:#18342b;
+  --success-dim:rgba(24,52,43,.08);
+  --info:#40524c;
+  --info-dim:rgba(64,82,76,.08);
+  --history:#66735b;
+  --history-dim:rgba(102,115,91,.08);
+  --node-customer:#18342b;
+  --node-card:#66735b;
+  --node-transaction:#b18a45;
+  --node-case:#a5533f;
+  --node-history:#66735b;
   --graph-edge:#c8c2b8;
   --graph-edge-hover:#8a857d;
   --graph-node-fill-opacity:0.12;
-  --graph-label-bg:#ffffff;
-  --tooltip-bg:#ffffff;
-  --tooltip-border:#ddd8d0;
+  --graph-label-bg:#faf8f2;
+  --tooltip-bg:#faf8f2;
+  --tooltip-border:#d5d1c5;
   --tooltip-shadow:0 8px 24px rgba(0,0,0,0.1);
-  --tab-active-border:#4a5d7a;
-  --sidebar-active-bg:#eae7e1;
-  --sidebar-active-border:#4a5d7a;
-  --confidence-track:#eae7e1;
-  --selection-ring:#2c2a26;
+  --tab-active-border:#18342b;
+  --sidebar-active-bg:#e6e4db;
+  --sidebar-active-border:#18342b;
+  --confidence-track:#e8e4d5;
+  --selection-ring:#242521;
   --font-sans:'Inter',system-ui,-apple-system,sans-serif;
   --font-display:'Source Serif 4','Georgia',serif;
   --font-mono:'JetBrains Mono','Consolas',monospace;
@@ -98,44 +98,44 @@ def index_page():
 }
 
 [data-theme="dark"] {
-  --bg-page:#1e1d1b;
-  --bg-surface:#272623;
-  --bg-surface-secondary:#2e2d2a;
-  --bg-surface-tertiary:#353431;
-  --bg-inset:#1a1918;
-  --border:#3a3835;
-  --border-emphasis:#4a4845;
-  --tx-primary:#e2dfd8;
-  --tx-secondary:#b0aca4;
-  --tx-muted:#7a766e;
-  --tx-faint:#5a5650;
-  --danger:#d4636f;
-  --danger-dim:rgba(212,99,111,.12);
-  --warning:#d4a43a;
-  --warning-dim:rgba(212,164,58,.12);
-  --success:#5cb87a;
-  --success-dim:rgba(92,184,122,.12);
-  --info:#8ba4c8;
-  --info-dim:rgba(139,164,200,.10);
-  --history:#a896c8;
-  --history-dim:rgba(168,150,200,.12);
-  --node-customer:#8ba4c8;
-  --node-card:#5cb87a;
-  --node-transaction:#d4a43a;
-  --node-case:#d4636f;
-  --node-history:#a896c8;
+  --bg-page:#1a1c1a;
+  --bg-surface:#232722;
+  --bg-surface-secondary:#2b302a;
+  --bg-surface-tertiary:#343a32;
+  --bg-inset:#161815;
+  --border:#3a4238;
+  --border-emphasis:#535c50;
+  --tx-primary:#e8e6d9;
+  --tx-secondary:#c2c0b4;
+  --tx-muted:#919086;
+  --tx-faint:#696860;
+  --danger:#c96c55;
+  --danger-dim:rgba(201,108,85,.12);
+  --warning:#d4a957;
+  --warning-dim:rgba(212,169,87,.12);
+  --success:#4a8268;
+  --success-dim:rgba(74,130,104,.12);
+  --info:#798f86;
+  --info-dim:rgba(121,143,134,.10);
+  --history:#8a997d;
+  --history-dim:rgba(138,153,125,.12);
+  --node-customer:#4a8268;
+  --node-card:#8a997d;
+  --node-transaction:#d4a957;
+  --node-case:#c96c55;
+  --node-history:#8a997d;
   --graph-edge:#4a4845;
   --graph-edge-hover:#7a766e;
   --graph-node-fill-opacity:0.15;
-  --graph-label-bg:#272623;
-  --tooltip-bg:#2e2d2a;
-  --tooltip-border:#4a4845;
+  --graph-label-bg:#232722;
+  --tooltip-bg:#2b302a;
+  --tooltip-border:#3a4238;
   --tooltip-shadow:0 8px 24px rgba(0,0,0,0.4);
-  --tab-active-border:#8ba4c8;
-  --sidebar-active-bg:#353431;
-  --sidebar-active-border:#8ba4c8;
-  --confidence-track:#353431;
-  --selection-ring:#e2dfd8;
+  --tab-active-border:#8a997d;
+  --sidebar-active-bg:#343a32;
+  --sidebar-active-border:#8a997d;
+  --confidence-track:#343a32;
+  --selection-ring:#e8e6d9;
 }
 
 html,body{height:100%;overflow:hidden;background:var(--bg-page);color:var(--tx-primary);font-family:var(--font-sans);font-size:13px;line-height:1.55;-webkit-font-smoothing:antialiased;transition:background .2s,color .2s}
@@ -544,7 +544,7 @@ function renderInvestigation(c){
             : c.execution_status === 'DENIED'
             ? '<div class="af-step"><div class="af-icon wait" style="color:var(--danger)">&#10005;</div><span class="auth-title text-red">Execution Denied</span></div>'
             : c.approval_required
-            ? '<div class="af-step"><div class="af-icon wait">○</div><span class="auth-title" style="color:var(--tx-muted)">Pending Approval</span></div>'
+            ? '<div class="af-step"><div class="af-icon wait">○</div><span class="auth-title" style="color:var(--tx-muted)">Execution: Pending Approval</span></div>'
             : '<div class="af-step"><div class="af-icon wait">○</div><span class="auth-title" style="color:var(--tx-muted)">Ready for Execution</span></div>'}
       </div>
     </div>
@@ -853,7 +853,7 @@ function renderReasoning(c){
         ${d.pattern?'<span>'+d.pattern.replace(/_/g,' ')+'</span>':''}
         ${d.exposure?'<span>$'+d.exposure+'</span>':''}
       </div>
-      <div class="hist-case-detail">Retrieved via GraphRAG from bank case memory.<br>Source: ${h.source}</div>
+      <div class="hist-case-detail">${h.graphrag_selected ? 'Retrieved via GraphRAG from bank case memory.' : 'Historical case linked via graph.'}<br>Source: ${h.source}</div>
     </div>`;
   });
 
@@ -890,7 +890,7 @@ function renderReasoning(c){
       </div>
     </div>
     <div>
-      <div class="signal-head" style="margin-bottom:10px"><span class="sdot" style="background:var(--history)"></span> GraphRAG Historical Precedents</div>
+      <div class="signal-head" style="margin-bottom:10px"><span class="sdot" style="background:var(--history)"></span> Historical Case Links</div>
       ${histHtml||'<div style="font-size:12px;color:var(--tx-faint)">No historical cases found.</div>'}
     </div>
     <div>
