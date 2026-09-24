@@ -500,25 +500,34 @@ function drawGraph(c){
   
   const cx=W/2, cy=(H-140)/2; // offset for details pane
   
-  svgNodes.push({id:c.customer_id,label:c.customer_id,type:'Customer',x:cx,y:cy-100,r:24,color:'#58a6ff'});
-  svgNodes.push({id:c.card_id,label:c.card_id,type:'Card',x:cx,y:cy,r:20,color:'#39d2c0'});
-  svgNodes.push({id:String(c.transaction_id),label:'$'+(c.sar_data?c.sar_data.exposure_usd.toFixed(0):'?'),type:'Transaction',x:cx,y:cy+100,r:18,color:'#d29922'});
-  svgNodes.push({id:c.case_id,label:c.case_id,type:'Case',x:cx+120,y:cy+100,r:20,color:'#da3633'});
+  const startX = cx; 
+  const startY = cy - 80;
+  const spacingY = 90;
+
+  svgNodes.push({id:c.customer_id,label:c.customer_id,type:'Customer',x:startX,y:startY,r:24,color:'#58a6ff'});
+  svgNodes.push({id:c.card_id,label:c.card_id,type:'Card',x:startX,y:startY+spacingY,r:20,color:'#39d2c0'});
+  svgNodes.push({id:String(c.transaction_id),label:'$'+(c.sar_data?c.sar_data.exposure_usd.toFixed(0):'?'),type:'Transaction',x:startX,y:startY+spacingY*2,r:18,color:'#d29922'});
+  
+  // Case node offset to the left of the transaction
+  svgNodes.push({id:c.case_id,label:c.case_id,type:'Case',x:startX-120,y:startY+spacingY*1.5,r:20,color:'#da3633'});
   
   svgEdges.push({from:c.customer_id,to:c.card_id,label:'HAS_CARD'});
   svgEdges.push({from:c.card_id,to:String(c.transaction_id),label:'USED_FOR'});
   svgEdges.push({from:String(c.transaction_id),to:c.case_id,label:'INVOLVES'});
 
   if(c.historical_evidence&&c.historical_evidence.length>0){
-    const maxH=Math.min(c.historical_evidence.length,4);
-    const startX=cx-140;
-    const spacing=80;
+    const maxH=c.historical_evidence.length;
+    // Historical cases branch out to the RIGHT
+    const hStartX = startX + 180;
+    const hSpacingY = 70;
+    // Vertically center them relative to the main column
+    const hStartY = startY + spacingY - ((maxH-1) * hSpacingY) / 2;
     for(let i=0;i<maxH;i++){
       const h=c.historical_evidence[i];
-      const hx=startX+(i*spacing);
-      const hy=cy+160;
+      const hx = hStartX;
+      const hy = hStartY + (i * hSpacingY);
       svgNodes.push({id:h.case_id,label:h.case_id,type:'History',x:hx,y:hy,r:14,color:'#bc8cff'});
-      svgEdges.push({from:c.customer_id,to:h.case_id,label:'PRIOR_CASE'});
+      svgEdges.push({from:c.customer_id,to:h.case_id,label:'PRIOR'});
     }
   }
 
