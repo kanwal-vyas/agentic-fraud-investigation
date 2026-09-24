@@ -541,3 +541,78 @@ class TigerGraphMCPServer:
                 "Connected cards should be reviewed for monitoring under Policy Rule R6."
             ]
         }
+
+    def handle_run_fraud_ring_wcc(self, args: Dict[str, Any], backend: str) -> Dict[str, Any]:
+        """
+        MCP handler for the run_fraud_ring_wcc WCC graph algorithm tool.
+        Executes the GSQL 'run_fraud_ring_wcc' query on live TigerGraph or
+        performs an equivalent offline multi-hop traversal on the sample graph.
+        """
+        card_id = str(args.get("card_id", "")).strip()
+        if not card_id:
+            return {
+                "tool": "run_fraud_ring_wcc",
+                "status": "error",
+                "backend": backend,
+                "error": "Missing required argument 'card_id'",
+                "subject": {},
+                "evidence": [],
+                "metrics": {},
+                "limitations": []
+            }
+
+        max_depth = int(args.get("max_depth", 3))
+        wcc = self.tools.run_fraud_ring_wcc(card_id, max_depth=max_depth)
+
+        evidence = []
+        if wcc.is_fraud_ring_detected:
+            evidence.append(
+                f"[WCC ALERT] Fraud ring detected: card {card_id} belongs to a connected component "
+                f"of {wcc.component_card_count} cards across {wcc.peer_customer_count} distinct customer(s) "
+                f"bridged by {wcc.shared_device_count} shared device profile(s)."
+            )
+            if wcc.connected_cards:
+                evidence.append(f"Peer cards in component: {', '.join(wcc.connected_cards[:10])}")
+            if wcc.shared_device_profiles:
+                evidence.append(f"Bridging device profiles: {', '.join(wcc.shared_device_profiles[:5])}")
+            if wcc.connected_customers:
+                evidence.append(f"Connected customers: {', '.join(wcc.connected_customers[:5])}")
+            evidence.append(
+                "WCC analysis indicates coordinated multi-account activity consistent with a fraud syndicate. "
+                "Policy Rule R6 (Syndicate Monitoring) applies."
+            )
+        else:
+            evidence.append(
+                f"WCC analysis: card {card_id} is in a singleton or isolated component "
+                f"(component size: {wcc.component_card_count}, shared devices: {wcc.shared_device_count}). "
+                "No multi-account fraud ring detected via graph connectivity."
+            )
+
+        return {
+            "tool": "run_fraud_ring_wcc",
+            "status": "success",
+            "backend": backend,
+            "subject": {
+                "seed_card_id": wcc.seed_card_id,
+                "wcc_component_id": wcc.wcc_component_id,
+                "is_fraud_ring_detected": wcc.is_fraud_ring_detected,
+            },
+            "evidence": evidence,
+            "metrics": {
+                "component_card_count": wcc.component_card_count,
+                "shared_device_count": wcc.shared_device_count,
+                "peer_customer_count": wcc.peer_customer_count,
+                "connected_cards": wcc.connected_cards,
+                "shared_device_profiles": wcc.shared_device_profiles,
+                "connected_customers": wcc.connected_customers,
+                "algorithm": "weakly_connected_components_gsql",
+                "gsql_query": "run_fraud_ring_wcc",
+                "graph": "FraudGraph",
+            },
+            "limitations": [
+                "WCC detects structural connectivity in the entity graph; it is a fraud signal, not a ground-truth verdict.",
+                "Requires Policy Rule R6 evaluation before syndicate-level action.",
+                "On offline mode: WCC is simulated via multi-hop traversal (find_connected_cards + find_shared_devices).",
+            ]
+        }
+

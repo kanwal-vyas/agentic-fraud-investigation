@@ -1,5 +1,5 @@
 # FinCEN Suspicious Activity Report (SAR) — Preparation Package
-**Case Reference:** `HHG-015` | **Generated:** 2026-09-23T13:22:01.824015
+**Case Reference:** `HHG-015` | **Generated:** 2026-09-25T03:51:42.773023
 **Regulatory Framework:** FinCEN 31 CFR § 1020.320 / Bank Secrecy Act
 **NOTICE:** PREPARATION AND SUPERVISORY RECOMMENDATION ONLY — NOT TRANSMITTED TO REGULATORS.
 

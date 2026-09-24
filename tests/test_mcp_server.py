@@ -17,12 +17,12 @@ def test_mcp_server_initialization_and_status(mcp_server):
     assert status["status"] == "online"
     assert status["backend"] == "offline_sample"
     assert status["is_live_tigergraph"] is False
-    assert status["tools_registered"] == 10
-    assert len(status["tool_names"]) == 10
+    assert status["tools_registered"] == 11
+    assert len(status["tool_names"]) == 11
 
 def test_mcp_list_tools_schemas(mcp_server):
     tools = mcp_server.list_tools()
-    assert len(tools) == 10
+    assert len(tools) == 11
     names = [t["name"] for t in tools]
     expected = [
         "get_transaction",
@@ -35,6 +35,7 @@ def test_mcp_list_tools_schemas(mcp_server):
         "detect_regional_anomaly",
         "get_historical_cases",
         "find_connected_cards",
+        "run_fraud_ring_wcc",
     ]
     for exp in expected:
         assert exp in names

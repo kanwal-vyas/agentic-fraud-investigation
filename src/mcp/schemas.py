@@ -224,5 +224,33 @@ MCP_INVESTIGATION_TOOLS: List[MCPToolDefinition] = [
             },
             "required": ["card_id"]
         }
+    ),
+    MCPToolDefinition(
+        name="run_fraud_ring_wcc",
+        description=(
+            "Execute the Weakly Connected Components (WCC) graph algorithm seeded from a card vertex. "
+            "Traverses Card → Transaction → DeviceProfile → Transaction → Card → Customer to identify "
+            "multi-account fraud rings (connected components in the FraudGraph entity graph). "
+            "Returns component size, shared device profiles, peer card IDs, peer customer count, and "
+            "a boolean fraud ring detection signal. "
+            "Use this when shared-device evidence suggests a coordinated syndicate (Policy Rule R6). "
+            "On live TigerGraph: executes the GSQL 'run_fraud_ring_wcc' query. "
+            "On offline mode: performs an equivalent multi-hop traversal simulation."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "card_id": {
+                    "type": "string",
+                    "description": "The seed card ID to run WCC from (e.g. 'C12382-K1')"
+                },
+                "max_depth": {
+                    "type": "integer",
+                    "description": "Maximum BFS traversal depth (default: 3)",
+                    "default": 3
+                }
+            },
+            "required": ["card_id"]
+        }
     )
 ]

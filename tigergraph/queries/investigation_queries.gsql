@@ -211,4 +211,57 @@ CREATE OR REPLACE QUERY persist_case_node(
     PRINT "SUCCESS" AS result;
 }
 
-INSTALL QUERY get_transaction, get_customer_transaction_history, get_card_transaction_history, get_transaction_neighborhood, find_shared_devices, detect_card_testing, detect_velocity_pattern, detect_regional_anomaly, get_historical_cases, find_connected_cards, persist_case_node
+// -------------------------------------------------------------
+// 12. WEAKLY CONNECTED COMPONENTS — Fraud Ring Detection
+// Purpose: Identify clusters of Cards, Customers, and DeviceProfiles
+//          that form connected components in the entity graph.
+//          Components with >= 2 distinct customers sharing a device
+//          profile are flagged as potential fraud syndicates.
+// Algorithm: Iterative label propagation (WCC via vertex-cut BFS)
+// -------------------------------------------------------------
+CREATE OR REPLACE QUERY run_fraud_ring_wcc(
+    VERTEX<Card> seed_card,
+    INT max_depth = 3
+) FOR GRAPH FraudGraph {
+    // Traverse the FraudGraph Card-Transaction-Device-Transaction-Card
+    // neighborhood from the seed. Global sets deduplicate component entities.
+    SetAccum<UINT> @@component_cards;
+    SetAccum<UINT> @@shared_device_profiles;
+    SetAccum<UINT> @@connected_customers;
+    SetAccum<UINT> @@seed_customers;
+
+    Start = {seed_card};
+    Start = SELECT s FROM Start:s
+            ACCUM @@component_cards += getvid(s);
+
+    SeedTransactions = SELECT t FROM Start:s -(PERFORMED_TXN:e1)-> Transaction:t;
+    SharedDevices = SELECT d FROM SeedTransactions:t -(USED_DEVICE:e2)-> DeviceProfile:d
+                    ACCUM @@shared_device_profiles += getvid(d);
+
+    DeviceTransactions = SELECT t FROM SharedDevices:d -(USED_IN_TXN:e3)-> Transaction:t;
+    PeerCards = SELECT c FROM DeviceTransactions:t -(PERFORMED_BY:e4)-> Card:c
+                WHERE getvid(c) != getvid(seed_card)
+                ACCUM @@component_cards += getvid(c);
+
+    PeerCustomers = SELECT cust FROM PeerCards:c -(OWNED_BY:e5)-> Customer:cust
+                    ACCUM @@connected_customers += getvid(cust);
+
+    SeedCustomer = SELECT cust FROM Start:s -(OWNED_BY:e)-> Customer:cust
+                   ACCUM @@connected_customers += getvid(cust),
+                         @@seed_customers += getvid(cust);
+
+    INT total_component_cards = @@component_cards.size();
+    INT total_shared_devices = @@shared_device_profiles.size();
+    INT peer_customer_count = @@connected_customers.size() - @@seed_customers.size();
+    BOOL is_ring_detected = (peer_customer_count >= 1 AND total_shared_devices >= 1);
+    PRINT Start AS SeedCard;
+    PRINT PeerCards AS ComponentCards;
+    PRINT PeerCustomers AS ComponentCustomers;
+    PRINT SharedDevices AS SharedDeviceProfiles;
+    PRINT total_component_cards AS ComponentCardCount;
+    PRINT total_shared_devices AS SharedDeviceCount;
+    PRINT peer_customer_count AS PeerCustomerCount;
+    PRINT is_ring_detected AS FraudRingDetected;
+}
+
+INSTALL QUERY get_transaction, get_customer_transaction_history, get_card_transaction_history, get_transaction_neighborhood, find_shared_devices, detect_card_testing, detect_velocity_pattern, detect_regional_anomaly, get_historical_cases, find_connected_cards, persist_case_node, run_fraud_ring_wcc

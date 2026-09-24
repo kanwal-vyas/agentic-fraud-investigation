@@ -121,3 +121,20 @@ class PatternDetectionResult(BaseModel):
     supporting_txn_ids: List[str]
     supporting_entity_ids: List[str]
     rationale: str
+
+class FraudRingWCCEvidence(BaseModel):
+    """
+    Weakly Connected Components (WCC) graph algorithm result.
+    Identifies whether a seed card belongs to a multi-account fraud ring
+    by traversing Card → Transaction → DeviceProfile → Transaction → Card → Customer.
+    Implemented via the run_fraud_ring_wcc GSQL query on FraudGraph.
+    """
+    seed_card_id: str
+    component_card_count: int           # Total cards in the detected component
+    shared_device_count: int            # Number of shared DeviceProfile vertices
+    peer_customer_count: int            # Distinct customers in the component (excluding seed)
+    connected_cards: List[str]          # Peer card IDs in the same WCC component
+    shared_device_profiles: List[str]   # DeviceProfile vertex IDs bridging the component
+    connected_customers: List[str]      # Customer vertex IDs reachable in the component
+    is_fraud_ring_detected: bool        # True if peer_customer_count >= 1 AND shared_device_count >= 1
+    wcc_component_id: str               # Label (seed card v_id) assigned to this component

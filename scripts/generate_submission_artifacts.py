@@ -12,6 +12,22 @@ from src.models.agent import InvestigationTrigger, TriggerType, InvestigationRes
 from src.models.case_memory import CaseLifecycleStatus, ActionExecutionStatus
 from src.mcp.server import TigerGraphMCPServer
 from src.agent.orchestrator import AgenticFraudInvestigator
+from src.rag.synthesis import InvestigationContextSynthesizer
+from src.tigergraph.sample_client import SampleGraphClient
+from src.tigergraph.tools import TigerGraphInvestigationTools
+
+def create_mcp_server() -> TigerGraphMCPServer:
+    """Build the configured graph backend; local benchmark runs can stay offline."""
+    if os.getenv("HHGOA_BENCHMARK_OFFLINE", "").strip().lower() in {"1", "true", "yes"}:
+        return TigerGraphMCPServer(
+            investigation_tools=TigerGraphInvestigationTools(client=SampleGraphClient())
+        )
+    return TigerGraphMCPServer()
+
+def create_investigator(mcp_server: TigerGraphMCPServer) -> AgenticFraudInvestigator:
+    """Share the selected graph client across retrieval and the MCP tools."""
+    synthesizer = InvestigationContextSynthesizer(tools=mcp_server.tools)
+    return AgenticFraudInvestigator(mcp_server=mcp_server, synthesizer=synthesizer)
 
 def ensure_directories():
     os.makedirs(os.path.join("artifacts", "benchmark"), exist_ok=True)
@@ -259,8 +275,8 @@ def run_evaluation_and_generate_artifacts():
     target_ids = [f"HHG-{i:03d}" for i in range(1, 21)]
     benchmark_df = df_cases[df_cases["case_id"].isin(target_ids)].copy()
 
-    mcp = TigerGraphMCPServer()
-    investigator = AgenticFraudInvestigator(mcp_server=mcp)
+    mcp = create_mcp_server()
+    investigator = create_investigator(mcp)
 
     evaluation_records = []
     sar_cases_count = 0
@@ -274,6 +290,16 @@ def run_evaluation_and_generate_artifacts():
         case_id = str(row["case_id"])
         trigger_type_str = str(row["trigger_type"])
         txn_id = int(row["flagged_txn_id"])
+        # Resolve monetary values through the graph client using the benchmark's
+        # transaction ID. case_pack.csv intentionally stores the relationship,
+        # not a duplicate amount that could drift from the transaction source.
+        transaction = mcp.tools.get_transaction(str(txn_id))
+        if transaction is None:
+            raise ValueError(
+                f"Benchmark transaction {txn_id} for {case_id} was not found in the graph source."
+            )
+        row = row.copy()
+        row["amount"] = transaction.amount
         card_id = str(row["card_id"])
         customer_id = str(row["customer_id"])
         risk_score = float(row["risk_score"]) if pd.notna(row["risk_score"]) and str(row["risk_score"]).strip() != "" else 0.0
@@ -299,7 +325,7 @@ def run_evaluation_and_generate_artifacts():
         before_after_case_data = None
         if case_id == "HHG-005":
             # 1. Run without additional evidence (BEFORE)
-            investigator_pre = AgenticFraudInvestigator(mcp_server=TigerGraphMCPServer())
+            investigator_pre = create_investigator(create_mcp_server())
             res_before = investigator_pre.investigate(trigger, simulated_evidence_response=None)
             stored_before = investigator_pre.case_store.get_case(case_id)
 
@@ -316,6 +342,7 @@ def run_evaluation_and_generate_artifacts():
                     "evidence_gaps": stored_before.evidence_gaps,
                     "evidence_requests": stored_before.evidence_requests,
                     "recommended_nba": stored_before.recommended_nba,
+                    "approval_route": stored_before.approval_route,
                     "status": stored_before.status.value,
                     "final_outcome": stored_before.final_outcome
                 },
@@ -325,6 +352,7 @@ def run_evaluation_and_generate_artifacts():
                     "confidence": stored_after.confidence,
                     "uncertainty_level": stored_after.uncertainty_level,
                     "recommended_nba": stored_after.recommended_nba,
+                    "approval_route": stored_after.approval_route,
                     "status": stored_after.status.value,
                     "final_outcome": stored_after.final_outcome
                 }
@@ -336,6 +364,35 @@ def run_evaluation_and_generate_artifacts():
         stored_case = investigator.case_store.get_case(case_id)
 
         # Build comprehensive machine-readable JSON record
+        # Derive pre/post NBA from reassessment history
+        # pre_evidence_nba = NBA recommended BEFORE any external evidence was received
+        # post_evidence_nba = NBA after reassessment with additional evidence (if applicable)
+        has_reassessments = bool(stored_case.reassessments)
+        if has_reassessments:
+            # The earliest reassessment captures the pre-evidence state
+            first_reassessment = stored_case.reassessments[0]
+            pre_evidence_nba = getattr(first_reassessment, "nba_before", None) or stored_case.recommended_nba
+            pre_evidence_approval_route = getattr(first_reassessment, "approval_route_before", None) or stored_case.approval_route
+            # The final reassessment result is the post-evidence state
+            last_reassessment = stored_case.reassessments[-1]
+            post_evidence_nba = getattr(last_reassessment, "nba_after", None) or stored_case.recommended_nba
+            post_evidence_approval_route = getattr(last_reassessment, "approval_route_after", None) or stored_case.approval_route
+            additional_evidence_required = True
+        elif stored_case.evidence_requests:
+            # Case requested evidence but no reassessment yet — still awaiting
+            pre_evidence_nba = stored_case.recommended_nba
+            pre_evidence_approval_route = stored_case.approval_route
+            post_evidence_nba = None
+            post_evidence_approval_route = None
+            additional_evidence_required = True
+        else:
+            # No additional evidence was needed — pre and post are identical
+            pre_evidence_nba = stored_case.recommended_nba
+            pre_evidence_approval_route = stored_case.approval_route
+            post_evidence_nba = None   # null = same as pre; evidence was sufficient
+            post_evidence_approval_route = None
+            additional_evidence_required = False
+
         eval_record = {
             "case_id": case_id,
             "trigger": {
@@ -374,6 +431,13 @@ def run_evaluation_and_generate_artifacts():
             "evidence_gaps": stored_case.evidence_gaps,
             "evidence_requests": stored_case.evidence_requests,
             "reassessments": [r.model_dump() for r in stored_case.reassessments],
+            # --- PRE / POST EVIDENCE NBA FIELDS (HHGOA Compliance) ---
+            "pre_evidence_nba": pre_evidence_nba,
+            "pre_evidence_approval_route": pre_evidence_approval_route,
+            "post_evidence_nba": post_evidence_nba,
+            "post_evidence_approval_route": post_evidence_approval_route,
+            "additional_evidence_required": additional_evidence_required,
+            # ----------------------------------------------------------
             "policy_rules_evaluated": stored_case.policy_rules_evaluated,
             "policy_decision": stored_case.policy_decision.model_dump(),
             "recommended_nba": stored_case.recommended_nba,
@@ -391,6 +455,14 @@ def run_evaluation_and_generate_artifacts():
                 "why_action": res.final_assessment.explanation.why_action
             }
         }
+        # ReassessmentRecord retains the outcome transition, while the paired
+        # HHG-005 runs provide the authoritative before/after NBA and approval
+        # route values for this controlled evidence demonstration.
+        if before_after_case_data:
+            eval_record["pre_evidence_nba"] = before_after_case_data["before"]["recommended_nba"]
+            eval_record["pre_evidence_approval_route"] = before_after_case_data["before"]["approval_route"]
+            eval_record["post_evidence_nba"] = before_after_case_data["after"]["recommended_nba"]
+            eval_record["post_evidence_approval_route"] = before_after_case_data["after"]["approval_route"]
         evaluation_records.append(eval_record)
 
         # Generate Case File (.md)
