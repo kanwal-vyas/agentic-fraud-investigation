@@ -994,58 +994,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg-page);color:var(--tx-p
       </div>
     </div>
 
-    <!-- LIVE SYSTEM STATUS STRIP -->
-    <div class="overview-status-strip">
-      <div class="oss-item">
-        <span class="oss-dot">●</span>
-        <strong>TIGERGRAPH MCP ONLINE</strong>
-      </div>
-      <div class="oss-sep"></div>
-      <div class="oss-item">
-        <span style="color:var(--tx-muted)">Graph:</span> <strong>FraudGraph Enterprise</strong>
-      </div>
-      <div class="oss-sep"></div>
-      <div class="oss-item">
-        <span style="color:var(--tx-muted)">Agent Engine:</span> <strong>Active &bull; 5 MCP Tools</strong>
-      </div>
-      <div class="oss-sep"></div>
-      <div class="oss-item">
-        <span style="color:var(--tx-muted)">Benchmark:</span> <strong>20 Cases Evaluated</strong>
-      </div>
-      <div class="oss-sep"></div>
-      <div class="oss-item">
-        <span style="color:var(--tx-muted)">Historical Memory:</span> <strong>5,565 Closed Precedents</strong>
-      </div>
-    </div>
-
-    <!-- KPI STRIP (WITH SAR PREPARATION CORRECTION) -->
-    <div class="kpi-strip">
-      <div class="kpi-card" onclick="switchTopView('benchmark')" style="cursor:pointer" title="View Benchmark">
-        <div class="kpi-label">BENCHMARK CASES</div>
-        <div class="kpi-val" id="ov-kpi-cases">20</div>
-        <div class="kpi-sub">100% evaluated</div>
-      </div>
-      <div class="kpi-card" onclick="switchTopView('benchmark')" style="cursor:pointer" title="View Benchmark">
-        <div class="kpi-label">FRAUD CAUGHT</div>
-        <div class="kpi-val" id="ov-kpi-fraud" style="color:var(--danger)">12</div>
-        <div class="kpi-sub">60% detection rate</div>
-      </div>
-      <div class="kpi-card" onclick="switchTopView('benchmark')" style="cursor:pointer" title="View SAR Documentation">
-        <div class="kpi-label">SAR PREPARATION</div>
-        <div class="kpi-val" id="ov-kpi-sar" style="color:var(--warning)">10</div>
-        <div class="kpi-sub">Prepared / recommended</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">EVALUATED EXPOSURE</div>
-        <div class="kpi-val" id="ov-kpi-exp">$36,878.89</div>
-        <div class="kpi-sub">Total benchmark spend</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">AUTONOMOUS NBA</div>
-        <div class="kpi-val" id="ov-kpi-nba" style="color:var(--success)">8</div>
-        <div class="kpi-sub">Autonomous vs 12 L1</div>
-      </div>
-    </div>
 
   </div>
 </div>
@@ -1786,7 +1734,7 @@ function showDetails(n) {
     let status='KNOWN', patt='N/A';
     (c.current_evidence||[]).forEach(e=>{
       if(e.statement.includes(n.id)) {
-        const m=e.statement.match(/Case [^\(]+\(([^,]+), ([^,]+)/);
+        const m=e.statement.match(/Case [^(]+[(]([^,]+), ([^,]+)[)]/);
         if(m){status=m[1];patt=m[2];}
       }
     });
