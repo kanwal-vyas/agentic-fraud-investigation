@@ -26,6 +26,16 @@ ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
 if os.path.exists(ASSETS_DIR):
     app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
 
+@app.get("/health", response_class=JSONResponse)
+def health_check():
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "ok",
+            "service": "aegis-investigation-console"
+        }
+    )
+
 @app.get("/aegis-medusa-emblem.png")
 @app.get("/src/ui/assets/aegis-medusa-emblem.png")
 @app.get("/src/ui/aegis-medusa-emblem.png")

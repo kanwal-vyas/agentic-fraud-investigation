@@ -304,6 +304,16 @@ To run the automated test suite:
 pytest -q
 ```
 
+## Render Deployment
+
+- The application is deployed as a FastAPI web service.
+- Render Free services can spin down after inactivity.
+- The application exposes `/health` specifically for lightweight uptime monitoring.
+- The recommended external monitor should call:
+  ```text
+  https://<render-service-url>/health
+  ```
+
 ## TigerGraph Configuration
 
 The application reads configuration from environment variables or a local `.env` file. For live TigerGraph connectivity, configure the host, graph name, and appropriate authentication values using the variable names defined in [`.env.example`](.env.example):
