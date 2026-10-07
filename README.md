@@ -1,5 +1,6 @@
 # AEGIS
 [Website](https://agentic-fraud-investigation.onrender.com/)
+
 **Agentic Evidence & Graph Intelligence System** is an agentic fraud-investigation system powered by TigerGraph. It turns a fraud signal, customer report, or analyst request into an evidence-grounded investigation: the agent queries graph relationships through MCP, synthesizes graph and historical context, assesses uncertainty and evidence sufficiency, applies policy, recommends a next best action, and persists the resulting case record for future investigation.
 
 Built for the **TigerGraph HHGOA Challenge, Task 4**.
